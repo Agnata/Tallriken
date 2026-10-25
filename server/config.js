@@ -21,6 +21,11 @@ export const config = {
   sessionDays: Number(env.SESSION_DAYS || 30),
   // Absolute base URL used in e-mail links.
   baseUrl: (env.PUBLIC_ORIGIN || `http://127.0.0.1:${env.PORT || 3000}`).replace(/\/$/, ""),
+  // Livsmedelsverkets livsmedelsdatabas (fetched monthly into foodsFile) and Open Food Facts.
+  foodsFile: env.FOODS_FILE || path.join(dataDir, "livsmedel.json"),
+  foodsMin: Number(env.FOODS_MIN || 100),
+  livsmedelUrl: env.LIVSMEDEL_URL || "https://dataportal.livsmedelsverket.se/livsmedel/api/v1",
+  offUrl: env.OFF_URL || "https://se.openfoodfacts.org",
   // Withings scale (developer.withings.com). Off unless both id and secret are set.
   withings: {
     enabled: !!(env.WITHINGS_CLIENT_ID && env.WITHINGS_CLIENT_SECRET),

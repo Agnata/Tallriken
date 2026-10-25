@@ -9,7 +9,9 @@ const BACKUP_HOUR = 3;
 //    wait at least an hour.
 //  - Withings: once an hour, fetch weighings for anyone not synced in 6 hours, in case a
 //    notification from Withings was lost.
-export function startScheduler(db, config, withings = null) {
+//  - Livsmedelsverket: fetch the food database when there is none, then monthly at 04:00;
+//    at most one attempt a day.
+export function startScheduler(db, config, withings = null, foods = null) {
   let running = false;
 
   async function tick(now = new Date()) {
@@ -31,6 +33,11 @@ export function startScheduler(db, config, withings = null) {
           setMeta(db, "backup_failed_at", now.toISOString());
           console.error("Backup misslyckades:", err.message);
         }
+      }
+
+      if (foods?.due() && getMeta(db, "foods_tried") !== sthlm.date && (foods.status().count === 0 || sthlm.hour === 4)) {
+        setMeta(db, "foods_tried", sthlm.date);
+        foods.refresh().catch(err => console.error("Livsmedelsverket:", err.message));
       }
 
       const hourKey = `${sthlm.date} ${sthlm.hour}`;

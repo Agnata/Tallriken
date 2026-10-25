@@ -192,6 +192,22 @@ Varje användare kan koppla sin Withings-våg under Inställningar. Vikten hamna
 
 **Felsökning:** ett fel från Withings visas under Inställningar ("Senaste hämtningen misslyckades …") och i journalen. Fel 401 betyder oftast att personen har tagit bort åtkomsten hos Withings. Koppla då från och koppla igen.
 
+## 9b. Livsmedel från Livsmedelsverket och Open Food Facts
+
+Sökningen i matrutan visar, utöver appens egen lista:
+- **Livsmedelsverkets livsmedelsdatabas** (cirka 2 500 livsmedel, öppna data, källa och version anges i appen). API:et (`https://dataportal.livsmedelsverket.se/livsmedel/api/v1`) saknar textsökning, så tjänsten hämtar hela listan med energi, protein, socker och mättat fett per 100 g och sparar den i `/var/lib/tallriken/livsmedel.json`. Första gången sker det strax efter start, sedan en gång i månaden kl. 04 (högst ett försök per dygn). Hämtningen tar några minuter. Status och knappen "Hämta nu" finns under Admin → Drift.
+- **Open Food Facts** för märkesvaror, sökt direkt via servern mot `https://se.openfoodfacts.org` (svenska produkter) och sparat i minnet ett dygn per sökning.
+
+Poängen räknas med samma modell som "Egen matvara": per 100 g, eller per portion när förpackningen anger en i gram. Det man väljer sparas under ★ Mina.
+
+| Nyckel | Standard | |
+|---|---|---|
+| `LIVSMEDEL_URL` | `https://dataportal.livsmedelsverket.se/livsmedel/api/v1` | Livsmedelsverkets API |
+| `OFF_URL` | `https://se.openfoodfacts.org` | Open Food Facts |
+| `FOODS_FILE` | `$DATA_DIR/livsmedel.json` | Den hämtade listan |
+
+Tjänsten behöver kunna nå båda adresserna utåt (HTTPS). Misslyckas hämtningen behålls den gamla listan, och felet visas under Admin.
+
 ## 10. Lokal automatisk backup
 
 Backupen sköts inuti Node-tjänsten: direkt om ingen backup finns, därefter dagligen från kl. 03.00 Europe/Stockholm. Efter ett fel väntar den minst en timme, och felet visas på sidan Admin.

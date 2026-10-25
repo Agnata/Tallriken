@@ -5,6 +5,7 @@ Poäng, rörelse och vikt på **https://tallriken.parnes.com**: artefakten Tallr
 - **Appen** är artefakten: Idag (poäng, måltider, smakbitar, rörelse, vatten, mående), Vikt (kurva och kroppsmått), Hälsa (träningsmål, hemmapass, dagsljus), Framsteg (veckosummering, delmål, märken) och Inställningar
 - **Lagring på servern** i stället för i artefakten: varje användares dagbok är ett JSON-dokument i SQLite, med versionsnummer så att två enheter inte skriver över varandra
 - **Withings-våg:** varje användare kan koppla sin våg, och vikten kommer in automatiskt när hen väger sig
+- **Livsmedel:** sök bland Livsmedelsverkets cirka 2 500 livsmedel och märkesvaror från Open Food Facts direkt i matrutan
 - **Kopia:** ladda ned dagboken som JSON och läs in en kopia, till exempel det du loggat i artefakten
 - **Node 24 / Express** bakom **Apache**, **SQLite** via `node:sqlite`, inga native-beroenden
 - **Inloggning** med e-post och lösenord, "Glömt lösenord", **tvåstegsverifiering** (TOTP med reservkoder, krävs för administratörer)
@@ -35,12 +36,12 @@ Allt om drift finns i **[docs/drift.md](docs/drift.md)**: sökvägar, miljöfil,
 
 ```
 server/    app.js (routes), auth.js, totp.js, twofactor.js, db.js (schema), backups.js, health.js,
-           scheduler.js, mailer.js, mail-templates.js, clock.js, config.js, withings.js, routes/ (data, account, admin, withings)
+           scheduler.js, mailer.js, mail-templates.js, clock.js, config.js, withings.js, foods.js, routes/ (data, account, admin, withings)
 public/    index.html (framsida), app.html (appen), login.html, losenord.html, konto.html, admin.html,
            css/ (app.css från artefakten, style.css), js/ (app.js, logic.js, …)
 scripts/   add-user.js, reset-2fa.js, backup.js
 deploy/    install.sh, systemd- och Apache-mallar, offsite-skript, env-mall
 test/      api.test.js (server), logic.test.js (beräkningar), static.test.js (CSP och referenser),
-           withings.test.js (mot ett låtsas-Withings)
+           withings.test.js och foods.test.js (mot låtsade tjänster)
 docs/      drift.md
 ```
