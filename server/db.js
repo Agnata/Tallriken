@@ -57,7 +57,25 @@ CREATE TABLE IF NOT EXISTS user_data (
 `;
 
 // Changes to existing databases, applied in order. Index + 1 = PRAGMA user_version.
-const MIGRATIONS = [];
+const MIGRATIONS = [
+  // 1: Withings scale per user (OAuth tokens) and short-lived OAuth states
+  `CREATE TABLE withings (
+     user_id         INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+     withings_userid TEXT NOT NULL UNIQUE,
+     access_token    TEXT NOT NULL,
+     refresh_token   TEXT NOT NULL,
+     expires_at      INTEGER NOT NULL,
+     last_update     INTEGER NOT NULL DEFAULT 0,
+     synced_at       TEXT,
+     last_error      TEXT,
+     created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+   );
+   CREATE TABLE oauth_states (
+     state_hash TEXT PRIMARY KEY,
+     user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     expires_at TEXT NOT NULL
+   );`,
+];
 
 // Runs fn inside a transaction; rolls back if it throws.
 export function transaction(db, fn) {

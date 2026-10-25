@@ -13,6 +13,8 @@ import { dataRouter } from "./routes/data.js";
 import { health } from "./health.js";
 import { startScheduler } from "./scheduler.js";
 import { createTwoFactor } from "./twofactor.js";
+import { createWithings } from "./withings.js";
+import { withingsRouter } from "./routes/withings.js";
 
 const PUBLIC = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
 const page = name => path.join(PUBLIC, name);
@@ -21,6 +23,8 @@ export function createApp(config = defaultConfig, db = openDb(config.dbPath), ma
   const app = express();
   const auth = createAuth(db, config);
   const twoFactor = createTwoFactor(db);
+  const withings = createWithings(db, config);
+  app.locals.withings = withings;
   const loginLimiter = rateLimit({ windowMs: 15 * 60e3, limit: config.loginLimit ?? 10, standardHeaders: "draft-8", legacyHeaders: false,
     message: { error: "För många försök. Vänta en kvart och försök igen." } });
 
@@ -42,11 +46,33 @@ export function createApp(config = defaultConfig, db = openDb(config.dbPath), ma
   app.use("/api/data", express.json({ limit: "5mb" }));
   app.use(express.json({ limit: "50kb" }));
   // Signed-in pages and the API are never cached by browsers or proxies.
-  app.use(["/api", "/app", "/konto", "/admin", "/login", "/losenord"], (_req, res, next) => {
+  app.use(["/api", "/app", "/konto", "/admin", "/login", "/losenord", "/withings"], (_req, res, next) => {
     res.set("Cache-Control", "no-store");
     next();
   });
   app.use(auth.middleware);
+
+  // ---- Withings: the browser returns here after approving, and Withings posts new weighings
+  // here (form-encoded, so outside /api and its JSON-only rule) ----
+  app.get("/withings/callback", requireUser, async (req, res) => {
+    if (!withings.enabled) return res.redirect("/app#installningar");
+    try {
+      const r = await withings.complete(req.user.id, req.query.code, req.query.state);
+      res.redirect(`/app?withings=ok&nya=${r.added}#installningar`);
+    } catch (err) {
+      res.redirect(`/app?withings=fel&meddelande=${encodeURIComponent(err.message)}#installningar`);
+    }
+  });
+  // Withings checks that the address answers before it accepts a subscription.
+  app.head("/withings/notify", (_req, res) => res.status(200).end());
+  app.get("/withings/notify", (_req, res) => res.status(200).end());
+  app.post("/withings/notify", express.urlencoded({ extended: false, limit: "4kb" }), (req, res) => {
+    res.status(200).end();
+    if (!withings.enabled || req.query.k !== withings.notifyKey) return;
+    if (String(req.body?.appli) !== "1") return;
+    withings.notified(req.body?.userid).catch(err => console.error("Withings-notis:", err.message));
+  });
+
   app.use("/api", sameOriginJson(config));
 
   // ---- public ----
@@ -83,6 +109,7 @@ export function createApp(config = defaultConfig, db = openDb(config.dbPath), ma
   app.get("/app", requireUser, (_req, res) => res.sendFile(page("app.html")));
   app.get("/konto", requireUser, (_req, res) => res.sendFile(page("konto.html")));
   app.use("/api/data", requireUser, dataRouter(db));
+  app.use("/api/withings", requireUser, withingsRouter(withings));
   app.get("/admin", requireAdmin, (_req, res) => res.sendFile(page("admin.html")));
   app.use("/api/admin", requireAdmin, adminRouter(db, auth, mailer, config, twoFactor));
 
@@ -103,7 +130,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const db = openDb(defaultConfig.dbPath);
   const mailer = createMailer(defaultConfig.mail);
   const app = createApp(defaultConfig, db, mailer);
-  if (process.env.SCHEDULER !== "false") startScheduler(db, defaultConfig);
+  if (process.env.SCHEDULER !== "false") startScheduler(db, defaultConfig, app.locals.withings);
   app.listen(defaultConfig.port, defaultConfig.host, () =>
-    console.log(`Tallriken lyssnar på http://${defaultConfig.host}:${defaultConfig.port}`));
+    console.log(`Tallriken lyssnar på http://${defaultConfig.host}:${defaultConfig.port}` +
+      (defaultConfig.withings.enabled ? " (Withings på)" : "")));
 }

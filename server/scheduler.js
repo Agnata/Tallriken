@@ -4,9 +4,12 @@ import { getMeta, setMeta } from "./db.js";
 
 const BACKUP_HOUR = 3;
 
-// Runs inside the Node service, checked every minute (no cron needed): a backup the first time
-// none exists, then daily from 03:00 Swedish time; after a failure, wait at least an hour.
-export function startScheduler(db, config) {
+// Runs inside the Node service, checked every minute (no cron needed):
+//  - backup: the first time none exists, then daily from 03:00 Swedish time; after a failure,
+//    wait at least an hour.
+//  - Withings: once an hour, fetch weighings for anyone not synced in 6 hours, in case a
+//    notification from Withings was lost.
+export function startScheduler(db, config, withings = null) {
   let running = false;
 
   async function tick(now = new Date()) {
@@ -28,6 +31,13 @@ export function startScheduler(db, config) {
           setMeta(db, "backup_failed_at", now.toISOString());
           console.error("Backup misslyckades:", err.message);
         }
+      }
+
+      const hourKey = `${sthlm.date} ${sthlm.hour}`;
+      if (withings?.enabled && getMeta(db, "withings_hour") !== hourKey) {
+        setMeta(db, "withings_hour", hourKey);
+        const r = await withings.syncStale(6);
+        if (r.failed) console.log(`Withings: ${r.ok} hämtade, ${r.failed} misslyckade.`);
       }
     } catch (err) {
       console.error("Schemaläggaren:", err);
