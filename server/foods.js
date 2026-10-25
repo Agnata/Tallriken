@@ -7,7 +7,10 @@ import { calcPoints } from "../public/js/logic.js";
 //    The API (dataportal.livsmedelsverket.se/livsmedel/api/v1) has no text search, so the whole
 //    list is fetched once, with energy, protein, sugar and saturated fat per 100 g, and kept in
 //    DATA_DIR/livsmedel.json. It is refreshed monthly.
-//  - Open Food Facts for branded products, searched live (open database, ODbL).
+//  - Open Food Facts for branded products (open database, ODbL), searched live with their search
+//    service search-a-licious (search.openfoodfacts.org; the old cgi/search.pl answers 503).
+//    Products in Sweden come first. Nutrients missing from a hit are filled in from the product
+//    API (world.openfoodfacts.org/api/v2/product/<code>).
 const UA = "Tallriken/1.0 (https://tallriken.parnes.com)";
 const NUTRIENTS = { ENERC: "kcal", PROT: "prot", SUGAR: "sug", FASAT: "fat" };
 
@@ -102,14 +105,17 @@ export function searchNames(items, query, limit = 30) {
 
 // Open Food Facts product -> a food the app can log: per portion when the package states one
 // in grams, else per 100 g. Products without energy are skipped.
+// search-a-licious may return a text field per language ({ sv, en, main }) and brands as a list.
+const text = v => v && typeof v === "object" && !Array.isArray(v) ? (v.sv || v.main || v.en || Object.values(v)[0] || "") : (v || "");
 export function offFood(p) {
   const n = p.nutriments || {};
   let kcal = n["energy-kcal_100g"];
   if (kcal == null && n.energy_100g != null) kcal = n.energy_100g / 4.184;
-  if (kcal == null || !(p.product_name_sv || p.product_name)) return null;
+  const productName = text(p.product_name_sv) || text(p.product_name);
+  if (kcal == null || !productName) return null;
   const per100 = calcPoints(Number(kcal), Number(n.proteins_100g || 0), Number(n.sugars_100g || 0), Number(n["saturated-fat_100g"] || 0));
-  const brand = String(p.brands || "").split(",")[0].trim();
-  const name = String(p.product_name_sv || p.product_name).trim();
+  const brand = String((Array.isArray(p.brands) ? p.brands[0] : String(p.brands || "").split(",")[0]) || "").trim();
+  const name = String(productName).trim();
   const g = Number(p.serving_quantity);
   const portion = g > 0 && g < 1000 ? `1 portion (${Math.round(g)} g)` : "100 g";
   const points = g > 0 && g < 1000
@@ -121,7 +127,19 @@ export function offFood(p) {
 export function createFoods(config) {
   const file = config.foodsFile;
   const lvUrl = config.livsmedelUrl;
-  const offUrl = config.offUrl;
+  const offUrl = (config.offUrl || "https://world.openfoodfacts.org").replace(/\/$/, "");
+  const offSearchUrl = (config.offSearchUrl || "https://search.openfoodfacts.org").replace(/\/$/, "");
+  const productCache = new Map();
+  // One product's name, brand and nutrients from the product API, cached for a week.
+  async function product(code) {
+    const c = productCache.get(code);
+    if (c && c.expires > Date.now()) return c.p;
+    const d = await getJson(`${offUrl}/api/v2/product/${encodeURIComponent(code)}?fields=product_name,product_name_sv,brands,nutriments,serving_quantity`, 8000);
+    const p = d?.product || {};
+    productCache.set(code, { p, expires: Date.now() + 7 * 864e5 });
+    if (productCache.size > 2000) productCache.delete(productCache.keys().next().value);
+    return p;
+  }
   let db = null;           // { version, fetched, foods }
   let importing = null;
   let lastError = null;
@@ -176,11 +194,22 @@ export function createFoods(config) {
       if (key.length < 2) return [];
       const hit = offCache.get(key);
       if (hit && hit.expires > Date.now()) return hit.items;
-      const params = new URLSearchParams({ search_terms: key, search_simple: "1", action: "process", json: "1", page_size: "24",
-        fields: "code,product_name,product_name_sv,brands,nutriments,serving_quantity" });
-      const data = await getJson(`${offUrl.replace(/\/$/, "")}/cgi/search.pl?${params}`, 8000);
+      const fields = "code,product_name,product_name_sv,brands,nutriments,serving_quantity,countries_tags";
+      let data;
+      try {
+        data = await getJson(`${offSearchUrl}/search?${new URLSearchParams({ q: key, page_size: "30", langs: "sv,en", fields })}`, 10_000);
+      } catch (err) {
+        console.error("Open Food Facts, sökning:", err.message);
+        throw err;
+      }
+      const inSweden = h => (h.countries_tags || []).includes("en:sweden") ? 1 : 0;
+      const hits = (data.hits || []).map((h, i) => [h, i]).sort((a, b) => inSweden(b[0]) - inSweden(a[0]) || a[1] - b[1]).map(x => x[0]);
+      // Fill in nutrients for the first hits if the search did not return them.
+      await Promise.all(hits.slice(0, 12).filter(h => !h.nutriments && h.code).map(async h => {
+        try { Object.assign(h, await product(h.code)); } catch (err) { console.error(`Open Food Facts, produkt ${h.code}:`, err.message); }
+      }));
       const seen = new Set();
-      const items = (data.products || []).map(offFood).filter(f => f && !seen.has(f.name.toLowerCase()) && seen.add(f.name.toLowerCase())).slice(0, 15);
+      const items = hits.map(offFood).filter(f => f && !seen.has(f.name.toLowerCase()) && seen.add(f.name.toLowerCase())).slice(0, 15);
       offCache.set(key, { items, expires: Date.now() + 864e5 });
       if (offCache.size > 500) offCache.delete(offCache.keys().next().value);
       return items;

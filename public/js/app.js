@@ -311,9 +311,9 @@ function remoteSearch(q){
     const [lv,off]=await Promise.allSettled([api("/api/foods/search?q="+e), api("/api/foods/brands?q="+e)]);
     if(remoteQ!==q) return;
     remote={q, lv: lv.status==="fulfilled"? lv.value.items : [], off: off.status==="fulfilled"? off.value.items : [],
-      state: off.status==="rejected"? "offerr" : "done", version: lv.status==="fulfilled"? lv.value.version : null};
+      state: off.status==="rejected"? "offerr" : "done", offErr: off.status==="rejected"? off.reason.message : "", version: lv.status==="fulfilled"? lv.value.version : null};
     if($("#foodDlg").open && $("#foodSearch").value.trim().toLowerCase()===q) renderFoodList();
-  },300);
+  },450);
 }
 function renderRemote(list, localHits){
   const q=$("#foodSearch").value.trim().toLowerCase();
@@ -332,7 +332,7 @@ function renderRemote(list, localHits){
   };
   if(remote.lv.length){ head("Livsmedelsverket, per 100 g"); remote.lv.forEach(f=>row(f,"lv")); }
   if(remote.off.length){ head("Märkesvaror (Open Food Facts)"); remote.off.forEach(f=>row(f,"off")); }
-  else if(remote.state==="offerr"){ head("Märkesvaror"); note("Kunde inte nå Open Food Facts just nu."); }
+  else if(remote.state==="offerr"){ head("Märkesvaror"); note("Kunde inte nå Open Food Facts just nu. "+(remote.offErr||"")); }
   if(!localHits && !remote.lv.length && !remote.off.length && remote.state!=="offerr") note("Ingen träff. Lägg till den som egen matvara nedan.");
   if(remote.lv.length||remote.off.length){ const p=document.createElement("p"); p.className="src";
     p.textContent="Källor: Livsmedelsverkets livsmedelsdatabas"+(remote.version? " (version "+remote.version+")" : "")+" och Open Food Facts (ODbL). Kontrollera gärna mot förpackningen."; list.append(p); }

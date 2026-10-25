@@ -196,14 +196,15 @@ Varje användare kan koppla sin Withings-våg under Inställningar. Vikten hamna
 
 Sökningen i matrutan visar, utöver appens egen lista:
 - **Livsmedelsverkets livsmedelsdatabas** (cirka 2 500 livsmedel, öppna data, källa och version anges i appen). API:et (`https://dataportal.livsmedelsverket.se/livsmedel/api/v1`) saknar textsökning, så tjänsten hämtar hela listan med energi, protein, socker och mättat fett per 100 g och sparar den i `/var/lib/tallriken/livsmedel.json`. Första gången sker det strax efter start, sedan en gång i månaden kl. 04 (högst ett försök per dygn). Hämtningen tar några minuter. Status och knappen "Hämta nu" finns under Admin → Drift.
-- **Open Food Facts** för märkesvaror, sökt direkt via servern mot `https://se.openfoodfacts.org` (svenska produkter) och sparat i minnet ett dygn per sökning.
+- **Open Food Facts** för märkesvaror, sökt direkt via servern med deras söktjänst search-a-licious (`https://search.openfoodfacts.org`). Den gamla sökningen `cgi/search.pl` svarar 503 och används inte. Produkter som säljs i Sverige visas först. Saknas näringsvärden i en träff hämtas de från produkt-API:et (`https://world.openfoodfacts.org/api/v2/product/<streckkod>`). Sökningar sparas i minnet ett dygn och produkter en vecka. Fel loggas i journalen ("Open Food Facts, …") och visas i appen.
 
 Poängen räknas med samma modell som "Egen matvara": per 100 g, eller per portion när förpackningen anger en i gram. Det man väljer sparas under ★ Mina.
 
 | Nyckel | Standard | |
 |---|---|---|
 | `LIVSMEDEL_URL` | `https://dataportal.livsmedelsverket.se/livsmedel/api/v1` | Livsmedelsverkets API |
-| `OFF_URL` | `https://se.openfoodfacts.org` | Open Food Facts |
+| `OFF_SEARCH_URL` | `https://search.openfoodfacts.org` | Open Food Facts söktjänst |
+| `OFF_URL` | `https://world.openfoodfacts.org` | Open Food Facts produkt-API |
 | `FOODS_FILE` | `$DATA_DIR/livsmedel.json` | Den hämtade listan |
 
 Tjänsten behöver kunna nå båda adresserna utåt (HTTPS). Misslyckas hämtningen behålls den gamla listan, och felet visas under Admin.

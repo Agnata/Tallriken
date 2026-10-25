@@ -25,7 +25,8 @@ export const config = {
   foodsFile: env.FOODS_FILE || path.join(dataDir, "livsmedel.json"),
   foodsMin: Number(env.FOODS_MIN || 100),
   livsmedelUrl: env.LIVSMEDEL_URL || "https://dataportal.livsmedelsverket.se/livsmedel/api/v1",
-  offUrl: env.OFF_URL || "https://se.openfoodfacts.org",
+  offUrl: env.OFF_URL || "https://world.openfoodfacts.org",
+  offSearchUrl: env.OFF_SEARCH_URL || "https://search.openfoodfacts.org",
   // Withings scale (developer.withings.com). Off unless both id and secret are set.
   withings: {
     enabled: !!(env.WITHINGS_CLIENT_ID && env.WITHINGS_CLIENT_SECRET),
