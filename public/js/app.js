@@ -1,4 +1,4 @@
-import { calcPoints, actPoints, iso, today, addDays, mondayOf, isoWeek, energyBudget, sunTimes, parseUnit, blank, normalize, looksLikeDiary, trendLine, niceTicks, timeTicks } from "./logic.js";
+import { calcPoints, actPoints, iso, today, addDays, mondayOf, isoWeek, energyBudget, sunTimes, parseUnit, blank, normalize, looksLikeDiary, trendLine, niceTicks, timeTicks, byWeek, startWeight } from "./logic.js";
 
 (async function(){
 "use strict";
@@ -357,28 +357,52 @@ function updateActCalc(){
 function removeAct(id){ const d=ensureDay(cur); d.acts=d.acts.filter(a=>a.id!==id); save(); renderAll(); }
 
 // ---------- Vikt ----------
-// Viktkurvan: vägningarna som en tunn linje, ett 7-dagars snitt som tydlig linje, målet streckat.
-// Glapp på mer än tre veckor bryter linjen. Håll fingret eller musen över kurvan för värden.
-let wRange=null, wShown=7;
-const W_RANGES=[["30","1 mån"],["91","3 mån"],["365","1 år"],["alla","Allt"]];
+// Viktkurvan. Upp till drygt ett år: varje vägning som en tunn linje och ett 7-dagars snitt som
+// tydlig linje. Längre perioder: veckosnitt och ett 30-dagars snitt, så att flera års vägningar
+// blir läsbara. Uppehåll i vägningarna visas som en prickad linje i stället för ett hopp.
+// Startdatumet markeras, målet är streckat. Håll fingret eller musen över kurvan för värden.
+// Samma kurva kan öppnas stor i en egen ruta.
+let wRange=null, bigRange=null, wShown=7;
+function wRanges(){
+  const r=[["30","1 mån"],["91","3 mån"],["365","1 år"]];
+  if(S.settings.startDate) r.push(["start","Start"]);
+  return [...r,["alla","Allt"]];
+}
 const monthShort=d=>new Date(d+"T12:00:00").toLocaleDateString("sv-SE",{month:"short"}).replace(/\.$/,"");
-function renderWeightChart(all){
-  const box=$("#wChart"), chips=$("#wChips"), legend=$("#wLegend"); box.innerHTML=""; chips.innerHTML=""; legend.textContent="";
+const longDate=d=>new Date(d+"T12:00:00").toLocaleDateString("sv-SE",{day:"numeric",month:"short",year:"numeric"});
+function renderWeightChart(all, big=false){
+  const box=$(big?"#bigChart":"#wChart"), chips=$(big?"#bigChips":"#wChips"), legend=$(big?"#bigLegend":"#wLegend");
+  box.innerHTML=""; chips.innerHTML=""; legend.textContent="";
+  $("#wBig").classList.toggle("hidden", all.length<2);
   if(all.length<2){ box.innerHTML='<p class="empty">Kurvan visas efter två vägningar.</p>'; return; }
-  const st=S.settings, span=(new Date(all[all.length-1].date)-new Date(all[0].date))/864e5;
-  if(!wRange) wRange= span>120? "91" : "alla";
-  if(span>35) W_RANGES.forEach(([k,l])=>{ const b=document.createElement("button"); b.type="button"; b.textContent=l; b.setAttribute("aria-pressed",k===wRange); b.onclick=()=>{ wRange=k; renderWeightChart(sortedW()); }; chips.append(b); });
-  const trendAll=trendLine(all,7);
-  const from= wRange==="alla"||span<=35? all[0].date : addDays(today(),-(+wRange-1));
-  const idx=all.map((p,i)=>i).filter(i=>all[i].date>=from);
-  const pts=idx.map(i=>all[i]), tr=idx.map(i=>trendAll[i]);
-  if(pts.length<1){ box.innerHTML='<p class="empty">Inga vägningar under den perioden.</p>'; return; }
-  const showTrend=pts.length>=5;
-  if(showTrend) legend.innerHTML='<span><i class="lg-raw"></i>vägning</span><span><i class="lg-trend"></i>snitt 7 dagar</span>';
+  const st=S.settings, first=all[0].date, last=all[all.length-1].date;
+  const span=(new Date(last)-new Date(first))/864e5;
+  let range= big? bigRange : wRange;
+  if(!range || (range==="start" && !st.startDate)) range= st.startDate? "start" : span>120? "91" : "alla";
+  if(big) bigRange=range; else wRange=range;
+  if(span>35) wRanges().forEach(([k,l])=>{ const b=document.createElement("button"); b.type="button"; b.textContent=l; b.setAttribute("aria-pressed",k===range);
+    b.onclick=()=>{ if(big) bigRange=k; else wRange=k; renderWeightChart(sortedW(),big); }; chips.append(b); });
+
+  const from= span<=35||range==="alla"? first : range==="start"? st.startDate : addDays(today(),-(+range-1));
+  const inRange=all.map((p,i)=>i).filter(i=>all[i].date>=from);
+  if(!inRange.length){ box.innerHTML='<p class="empty">Inga vägningar under den perioden.</p>'; return; }
+  const raw=inRange.map(i=>all[i]);
+  const long=(new Date(last)-new Date(raw[0].date))/864e5>400;
+  // Snittet räknas på hela historiken så att det stämmer också i början av perioden.
+  const trendAll=trendLine(all, long?30:7), trRaw=inRange.map(i=>trendAll[i]);
+  const pts= long? byWeek(raw) : raw, tr= long? byWeek(trRaw,"last") : trRaw;
+  const showTrend=pts.length>=5, gapDays= long? 45 : 21;
+  if(showTrend) legend.innerHTML='<span><i class="lg-raw"></i>'+(long?"veckosnitt":"vägning")+'</span><span><i class="lg-trend"></i>snitt '+(long?30:7)+' dagar</span>';
 
   // Ritas i verklig bredd så att texten blir lika stor som resten av sidan. Är fliken dold
   // används sidans bredd minus kortets marginaler.
-  const W=Math.max(280, Math.round(box.clientWidth || ($(".wrap").clientWidth-34))), H=Math.round(Math.min(260,Math.max(190,W*0.5))), PL=38,PR=8,PT=12,PB=28;
+  const W=Math.max(280, Math.round(box.clientWidth || ($(".wrap").clientWidth-34)));
+  // Stor: så hög som får plats under rubrik och knappar i rutan, även i liggande läge.
+  const room= big? window.innerHeight*0.94 - (box.getBoundingClientRect().top - $("#chartDlg").getBoundingClientRect().top) - 24 : 0;
+  const portrait=window.innerHeight>window.innerWidth;
+  if(big) $("#bigHint").classList.toggle("hidden", !portrait);
+  const H= big? Math.round(Math.max(150, Math.min(room, W*(portrait?1.15:0.62)))) : Math.round(Math.min(260,Math.max(190,W*0.5)));
+  const PL=40,PR=10,PT=14,PB=28, FS=big?13:12;
   const tm=d=>new Date(d+"T12:00:00").getTime();
   const x0=tm(pts[0].date), x1=Math.max(tm(pts[pts.length-1].date), x0+864e5);
   let lo=Math.min(...pts.map(p=>p.kg)), hi=Math.max(...pts.map(p=>p.kg));
@@ -387,28 +411,43 @@ function renderWeightChart(all){
   if(goalIn){ lo=Math.min(lo,st.goal); hi=Math.max(hi,st.goal); }
   const pad=Math.max(0.5,(hi-lo)*0.08); lo-=pad; hi+=pad;
   const X=d=>PL+(W-PL-PR)*((tm(d)-x0)/(x1-x0)), Y=v=>PT+(H-PT-PB)*(1-(v-lo)/(hi-lo));
-  const path=list=>{ let d="",prev=null; list.forEach(p=>{ d+=(prev && (tm(p.date)-tm(prev.date))/864e5<=21? "L":"M")+X(p.date).toFixed(1)+","+Y(p.kg).toFixed(1); prev=p; }); return d; };
-  const f1=v=>fmtN(v);
+  const xy=p=>X(p.date).toFixed(1)+","+Y(p.kg).toFixed(1);
+  // Hela linjen, och prickade bryggor över uppehållen.
+  const paths=list=>{ let line="", gaps="", prev=null;
+    list.forEach(p=>{ const gap= prev && (tm(p.date)-tm(prev.date))/864e5>gapDays;
+      line+=(prev&&!gap? "L":"M")+xy(p); if(gap) gaps+="M"+xy(prev)+"L"+xy(p); prev=p; });
+    return {line,gaps}; };
 
-  let s='<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="Viktkurva från '+shortDate(pts[0].date)+' till '+shortDate(pts[pts.length-1].date)+', senast '+fmtKg(pts[pts.length-1].kg)+' kg">';
-  niceTicks(lo,hi,5).forEach(v=>{ const y=Y(v).toFixed(1);
+  let s='<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="Viktkurva från '+longDate(raw[0].date)+' till '+longDate(raw[raw.length-1].date)+', senast '+fmtKg(raw[raw.length-1].kg)+' kg">';
+  niceTicks(lo,hi,big?6:5).forEach(v=>{ const y=Y(v).toFixed(1);
     s+='<line x1="'+PL+'" x2="'+(W-PR)+'" y1="'+y+'" y2="'+y+'" stroke="var(--line)" stroke-width="1"/>';
-    s+='<text x="'+(PL-8)+'" y="'+(+y+4)+'" text-anchor="end" font-size="12" fill="var(--muted)">'+f1(v)+'</text>'; });
-  const tt=timeTicks(pts[0].date,pts[pts.length-1].date,Math.max(3,Math.floor(W/85))), yrs=new Set(pts.map(p=>p.date.slice(0,4))).size>1, short=(x1-x0)/864e5<=45;
+    s+='<text x="'+(PL-8)+'" y="'+(+y+4)+'" text-anchor="end" font-size="'+FS+'" fill="var(--muted)">'+fmtN(v)+'</text>'; });
+  const tt=timeTicks(pts[0].date,pts[pts.length-1].date,Math.max(3,Math.floor(W/85))), yrs=new Set(pts.map(p=>p.date.slice(0,4))).size>1, short=(x1-x0)/864e5<=45, years=(x1-x0)/864e5>730;
   let firstLab=true;
   tt.forEach(d=>{ const x=X(d); if(x<PL+14||x>W-PR-14) return;
     // Årtal på första etiketten och vid varje årsskifte när kurvan spänner över flera år.
-    const lab= short? shortDate(d) : monthShort(d)+(yrs&&(firstLab||d.slice(5,7)==="01")? " "+d.slice(2,4).replace(/^/,"’") : "");
+    const lab= short? shortDate(d) : years? d.slice(0,4) : monthShort(d)+(yrs&&(firstLab||d.slice(5,7)==="01")? " ’"+d.slice(2,4) : "");
     firstLab=false;
     s+='<line x1="'+x.toFixed(1)+'" x2="'+x.toFixed(1)+'" y1="'+(H-PB)+'" y2="'+(H-PB+4)+'" stroke="var(--line)"/>';
-    s+='<text x="'+x.toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle" font-size="12" fill="var(--muted)">'+lab+'</text>'; });
-  if(st.goal){
-    if(goalIn) s+='<line x1="'+PL+'" x2="'+(W-PR)+'" y1="'+Y(st.goal).toFixed(1)+'" y2="'+Y(st.goal).toFixed(1)+'" stroke="var(--cloud)" stroke-width="2" stroke-dasharray="6 5"/><text x="'+(W-PR)+'" y="'+(Y(st.goal)-6).toFixed(1)+'" text-anchor="end" font-size="12" fill="var(--muted)">mål '+fmtKg(st.goal)+'</text>';
-    else s+='<text x="'+(W-PR)+'" y="'+(H-PB-6)+'" text-anchor="end" font-size="12" fill="var(--muted)">mål '+fmtKg(st.goal)+' kg ↓</text>';
+    s+='<text x="'+x.toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle" font-size="'+FS+'" fill="var(--muted)">'+lab+'</text>'; });
+  if(st.startDate && tm(st.startDate)>=x0 && tm(st.startDate)<=x1){
+    const x=X(st.startDate).toFixed(1);
+    s+='<line x1="'+x+'" x2="'+x+'" y1="'+PT+'" y2="'+(H-PB)+'" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 4"/><text x="'+(+x+5)+'" y="'+(PT+10)+'" font-size="'+FS+'" fill="var(--muted)">start</text>';
   }
-  s+='<path d="'+path(pts)+'" fill="none" stroke="var(--pine)" stroke-opacity="'+(showTrend?0.35:1)+'" stroke-width="'+(showTrend?1.5:2)+'" stroke-linejoin="round" stroke-linecap="round"/>';
+  if(st.goal){
+    if(goalIn) s+='<line x1="'+PL+'" x2="'+(W-PR)+'" y1="'+Y(st.goal).toFixed(1)+'" y2="'+Y(st.goal).toFixed(1)+'" stroke="var(--cloud)" stroke-width="2" stroke-dasharray="6 5"/><text x="'+(W-PR)+'" y="'+(Y(st.goal)-6).toFixed(1)+'" text-anchor="end" font-size="'+FS+'" fill="var(--muted)">mål '+fmtKg(st.goal)+'</text>';
+    else s+='<text x="'+(W-PR)+'" y="'+(H-PB-6)+'" text-anchor="end" font-size="'+FS+'" fill="var(--muted)">mål '+fmtKg(st.goal)+' kg ↓</text>';
+  }
+  const pl=paths(pts), pt=paths(tr);
+  const rawOp= showTrend? 0.35 : 1;
+  s+='<path d="'+pl.line+'" fill="none" stroke="var(--pine)" stroke-opacity="'+rawOp+'" stroke-width="'+(showTrend?1.5:2)+'" stroke-linejoin="round" stroke-linecap="round" class="ln"/>';
   if(pts.length<=40) pts.forEach(p=>s+='<circle cx="'+X(p.date).toFixed(1)+'" cy="'+Y(p.kg).toFixed(1)+'" r="3.5" fill="var(--surface)" stroke="var(--pine)" stroke-opacity="'+(showTrend?0.6:1)+'" stroke-width="1.5"/>');
-  if(showTrend) s+='<path d="'+path(tr)+'" fill="none" stroke="var(--pine)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+  if(showTrend){
+    // Linjen dras inte över uppehållen; där syns bara den prickade bryggan.
+    s+='<path d="'+pt.line+'" fill="none" stroke="var(--pine)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+  }
+  const gapD= showTrend? pt.gaps : pl.gaps;
+  if(gapD) s+='<path d="'+gapD+'" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="1 5" stroke-linecap="round"/>';
   s+='<g class="hov" style="display:none"><line y1="'+PT+'" y2="'+(H-PB)+'" stroke="var(--muted)" stroke-width="1"/><circle r="5" fill="var(--pine)" stroke="var(--surface)" stroke-width="2"/></g>';
   s+='<rect x="'+PL+'" y="0" width="'+(W-PL-PR)+'" height="'+H+'" fill="transparent" class="hit"/></svg><div class="ctip" role="status"></div>';
   box.innerHTML=s;
@@ -420,7 +459,8 @@ function renderWeightChart(all){
     const p=pts[bi], cx=X(p.date), cy=Y(p.kg);
     hov.style.display=""; hov.querySelector("line").setAttribute("x1",cx); hov.querySelector("line").setAttribute("x2",cx);
     hov.querySelector("circle").setAttribute("cx",cx); hov.querySelector("circle").setAttribute("cy",cy);
-    tip.innerHTML='<b>'+fmtKg(p.kg)+' kg</b><span>'+new Date(p.date+"T12:00:00").toLocaleDateString("sv-SE",{day:"numeric",month:"short",year:"numeric"})+(showTrend? ' · snitt '+fmtKg(tr[bi].kg) : '')+'</span>';
+    const when= long? "vecka "+isoWeek(p.from)+" "+p.from.slice(0,4)+" · "+p.n+(p.n>1?" vägningar":" vägning") : longDate(p.date);
+    tip.innerHTML='<b>'+fmtKg(p.kg)+' kg</b><span>'+when+(showTrend? ' · snitt '+fmtKg(tr[bi].kg) : '')+'</span>';
     tip.style.display="block";
     const px=cx*r.width/W, w=tip.offsetWidth;
     tip.style.left=Math.max(0,Math.min(r.width-w,px-w/2))+"px"; tip.style.top=Math.max(0,cy*r.height/H-tip.offsetHeight-12)+"px";
@@ -429,13 +469,16 @@ function renderWeightChart(all){
   const hit=box.querySelector(".hit");
   hit.addEventListener("pointermove",show); hit.addEventListener("pointerdown",show); hit.addEventListener("pointerleave",hide);
 }
+function openBigChart(){
+  bigRange=wRange; $("#chartDlg").showModal(); renderWeightChart(sortedW(),true);
+}
 function renderWeight(){
   const w=sortedW(); const st=S.settings;
-  const start=w.length? w[0].kg : null, now=w.length? w[w.length-1].kg : null;
+  const sw=startWeight(w,st.startDate), start=sw? sw.kg : null, now=w.length? w[w.length-1].kg : null;
   $("#wNow").textContent = now? fmtKg(now)+" kg" : "–";
   if(now && start){
-    const diff=start-now;
-    $("#wDelta").textContent = w.length<2? "Första vägningen sparad." : (diff>=0? fmtKg(diff)+" kg ner sedan start" : fmtKg(-diff)+" kg upp sedan start");
+    const diff=start-now, since=" sedan start ("+longDate(sw.date)+")";
+    $("#wDelta").textContent = w.length<2? "Första vägningen sparad." : (diff>=0? fmtKg(diff)+" kg ner"+since : fmtKg(-diff)+" kg upp"+since);
   } else $("#wDelta").textContent="Lägg in din första vikt nedan.";
   if(now && start && st.goal && start>st.goal){
     const pct=Math.max(0,Math.min(100,(start-now)/(start-st.goal)*100));
@@ -916,8 +959,9 @@ const BADGES = [
   ["💧","Vätskebalans","8 glas vatten en dag", ()=>Object.values(S.days).some(d=>(d.water||0)>=8)],
   ["🌟","Målvikten","Nå din målvikt", ()=>{const w=sortedW();return S.settings.goal && w.length>1 && w[w.length-1].kg<=S.settings.goal;}]
 ];
-function lostKg(){ const w=sortedW(); return w.length>1? w[0].kg-w[w.length-1].kg : 0; }
-function lostPct(){ const w=sortedW(); return w.length>1? lostKg()/w[0].kg*100 : 0; }
+// Räknas från startvikten: första vägningen på eller efter startdatumet under Inställningar.
+function lostKg(){ const w=sortedW(), s=startWeight(w,S.settings.startDate); return w.length>1&&s? s.kg-w[w.length-1].kg : 0; }
+function lostPct(){ const w=sortedW(), s=startWeight(w,S.settings.startDate); return w.length>1&&s? lostKg()/s.kg*100 : 0; }
 function renderProgress(){
   $("#stStreak").textContent=streak();
   $("#stDays").textContent=Object.values(S.days).filter(d=>d.foods.length).length;
@@ -956,7 +1000,7 @@ function checkBadges(){
 // ---------- Inställningar ----------
 function renderSettings(){
   const s=S.settings;
-  $("#setName").value=s.name||""; $("#setHeight").value=s.height||""; $("#setGoal").value=s.goal||"";
+  $("#setName").value=s.name||""; $("#setHeight").value=s.height||""; $("#setGoal").value=s.goal||""; $("#setStart").value=s.startDate||"";
   $("#setSex").value=s.sex||"kvinna"; $("#setAge").value=s.age||""; $("#setPal").value=s.pal||"1.4";
   const lw=sortedW(); $("#setKg").value=lw.length? lw[lw.length-1].kg : ""; $("#calcOut").textContent="";
   $("#setDaily").value=s.daily; $("#setWeekly").value=s.weekly; $("#setGym").value=s.gymGoal||2; $("#setCardio").value=s.cardioGoal||150; goalWarn(); renderLibrary();
@@ -1030,7 +1074,8 @@ $("#wDate").value=today();
 $("#mDate").value=today();
 $("#mSave").onclick=saveMeasures;
 $("#wMore").onclick=()=>{ wShown+=20; renderWeight(); };
-let resizeT; window.addEventListener("resize",()=>{ clearTimeout(resizeT); resizeT=setTimeout(()=>renderWeightChart(sortedW()),150); });
+$("#wBig").onclick=openBigChart;
+let resizeT; window.addEventListener("resize",()=>{ clearTimeout(resizeT); resizeT=setTimeout(()=>{ renderWeightChart(sortedW()); if($("#chartDlg").open) renderWeightChart(sortedW(),true); },150); });
 $("#logGym").onclick=()=>{ cur=today(); openActPreset("Gym, styrka",60,2); };
 $("#logCardio").onclick=()=>{ cur=today(); openActPreset("Gym, kondition",30,2); };
 $("#place").onchange=()=>{ S.settings.place=$("#place").value; save(); renderHealth(); };
@@ -1085,6 +1130,7 @@ $("#setSave").onclick=()=>{
   if(lastCalcKg){ s.calcKg=lastCalcKg; lastCalcKg=null; }
   s.height=parseFloat($("#setHeight").value)||null;
   s.goal=parseFloat(String($("#setGoal").value).replace(",","."))||null;
+  s.startDate=$("#setStart").value||null;
   s.daily=Math.min(45,Math.max(18,parseInt($("#setDaily").value)||23));
   s.weekly=Math.min(50,Math.max(0,parseInt($("#setWeekly").value)||0));
   s.gymGoal=Math.min(7,Math.max(1,parseInt($("#setGym").value)||2));
