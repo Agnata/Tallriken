@@ -79,3 +79,14 @@ test("normalize repairs partial documents; looksLikeDiary spots copies", () => {
   assert.ok(!L.looksLikeDiary([]));
   assert.ok(!L.looksLikeDiary(null));
 });
+
+test("weight chart: 7-day trend, round axis values, time labels", () => {
+  const pts = [["2026-10-01", 80], ["2026-10-02", 82], ["2026-10-05", 81], ["2026-10-08", 79], ["2026-10-30", 78]].map(([date, kg]) => ({ date, kg }));
+  const t = L.trendLine(pts, 7).map(p => Math.round(p.kg * 100) / 100);
+  assert.deepEqual(t, [80, 81, 81, 80.67, 78], "10-08 averages 10-02..10-08; a weighing after a gap stands alone");
+  assert.deepEqual(L.niceTicks(76.3, 83.9, 4), [78, 80, 82]);
+  assert.deepEqual(L.niceTicks(77.1, 78.4, 4), [77.5, 78], "half kilos for a narrow range");
+  assert.deepEqual(L.timeTicks("2026-10-01", "2026-10-30"), ["2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26"], "Mondays for a month");
+  assert.deepEqual(L.timeTicks("2026-03-08", "2026-10-14", 4), ["2026-04-01", "2026-06-01", "2026-08-01", "2026-10-01"], "every other month start");
+  assert.deepEqual(L.timeTicks("2025-12-15", "2026-02-20"), ["2026-01-01", "2026-02-01"], "across new year");
+});

@@ -57,3 +57,39 @@ export function normalize(data){
 // Does an imported file look like a Tallriken diary?
 export const looksLikeDiary = x => !!x && typeof x==="object" && !Array.isArray(x) &&
   typeof x.days==="object" && x.days!==null && typeof x.settings==="object" && x.settings!==null;
+
+// ---------- Weight chart ----------
+// Mean of the weighings in the last `days` days (inclusive) at each weighing: a calm trend line
+// that daily water-weight swings do not jerk around. points: [{date, kg}] sorted by date.
+export function trendLine(points, days=7){
+  const out=[]; let j=0, sum=0;
+  for(let i=0;i<points.length;i++){
+    sum+=points[i].kg;
+    const from=addDays(points[i].date,-(days-1));
+    while(points[j].date<from){ sum-=points[j].kg; j++; }
+    out.push({date:points[i].date, kg:sum/(i-j+1)});
+  }
+  return out;
+}
+
+// Round axis values between lo and hi, about n of them (steps of 1, 2, 2.5 or 5 × 10^k).
+export function niceTicks(lo,hi,n=4){
+  const raw=(hi-lo||1)/n, mag=10**Math.floor(Math.log10(raw));
+  const step=[1,2,2.5,5,10].map(m=>m*mag).find(s=>s>=raw-1e-12);
+  const ticks=[]; for(let v=Math.ceil(lo/step-1e-9)*step; v<=hi+1e-9; v+=step) ticks.push(Math.round(v*1e6)/1e6);
+  return ticks;
+}
+
+// Dates to label on a time axis from..to: Mondays for short spans, else month starts,
+// thinned to at most `max` labels.
+export function timeTicks(from,to,max=6){
+  const days=(new Date(to+"T12:00:00")-new Date(from+"T12:00:00"))/864e5;
+  let all=[];
+  if(days<=45){ for(let d=mondayOf(from); d<=to; d=addDays(d,7)) if(d>=from) all.push(d); }
+  else{
+    let [y,m]=from.split("-").map(Number);
+    for(;;){ const d=y+"-"+String(m).padStart(2,"0")+"-01"; if(d>to) break; if(d>=from) all.push(d); m++; if(m>12){ m=1; y++; } }
+  }
+  const step=Math.max(1,Math.ceil(all.length/max));
+  return all.filter((_,i)=>i%step===0);
+}
