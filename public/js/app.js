@@ -390,7 +390,7 @@ function renderWeight(){
     box.innerHTML=svg;
   }
   const ul=$("#wList"); ul.innerHTML="";
-  w.slice().reverse().slice(0,10).forEach(x=>ul.append(itemRow(new Date(x.date+"T12:00:00").toLocaleDateString("sv-SE",{day:"numeric",month:"short",year:"numeric"}),"",fmtKg(x.kg)+" kg",()=>{S.weights=S.weights.filter(y=>y.date!==x.date);save();renderAll();})));
+  w.slice().reverse().slice(0,10).forEach(x=>ul.append(itemRow(new Date(x.date+"T12:00:00").toLocaleDateString("sv-SE",{day:"numeric",month:"short",year:"numeric"}),x.src==="withings"?"från Withings":"",fmtKg(x.kg)+" kg",()=>{S.weights=S.weights.filter(y=>y.date!==x.date);save();renderAll();})));
   ul.querySelectorAll(".p").forEach(p=>p.classList.remove("zero"));
 }
 
@@ -1054,6 +1054,53 @@ $("#importFile").onchange=async()=>{
   if(!confirm("Ersätta allt i Tallriken med kopian ("+n+" dagar)? Det du har nu skrivs över.")) return;
   S=normalize(data); save(); renderAll(); renderSettings(); known=null; checkBadges(); toast("Kopian är inläst");
 };
+// ---------- Withings ----------
+const fmtWhen=s=>new Date(s).toLocaleString("sv-SE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+async function api(path,opts={}){
+  const res=await fetch(path,{method:opts.method||"GET",headers:opts.body?{"Content-Type":"application/json"}:{},body:opts.body?JSON.stringify(opts.body):undefined});
+  const body=await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(body.error||("Fel "+res.status));
+  return body;
+}
+function showWithings(st){
+  $("#wiBlock").classList.toggle("hidden", !st.enabled);
+  if(!st.enabled) return;
+  $("#wiConnect").classList.toggle("hidden", st.connected);
+  $("#wiActions").classList.toggle("hidden", !st.connected);
+  $("#wiText").textContent = !st.connected
+    ? "Koppla din Withings-våg så hamnar vikten här automatiskt när du väger dig. Dagens första vägning räknas, och vikter du skrivit in själv ändras aldrig."
+    : (st.error? "Senaste hämtningen misslyckades: "+st.error : st.syncedAt? "Kopplad. Senast hämtat "+fmtWhen(st.syncedAt)+"." : "Kopplad.");
+}
+async function loadWithings(){ try{ showWithings(await api("/api/withings")); }catch(e){} }
+// Hämtar dagboken igen om servern har lagt in nya vikter.
+async function refreshData(){
+  if(dirty) await push();
+  const remote=await api("/api/data");
+  if(remote.data && remote.version!==version) adopt(remote);
+}
+$("#wiConnect").onclick=async()=>{
+  try{ if(dirty) await push(); const r=await api("/api/withings/connect",{method:"POST",body:{}}); location.href=r.url; }
+  catch(e){ toast(e.message); }
+};
+$("#wiSync").onclick=async()=>{
+  $("#wiSync").disabled=true;
+  try{ const r=await api("/api/withings/sync",{method:"POST",body:{}}); showWithings(r); await refreshData();
+    toast(r.added? r.added+(r.added>1?" nya vikter":" ny vikt")+" från Withings" : "Inga nya vikter"); if(r.added) checkBadges(); }
+  catch(e){ toast(e.message); loadWithings(); }
+  finally{ $("#wiSync").disabled=false; }
+};
+$("#wiOff").onclick=async()=>{
+  if(!confirm("Koppla från Withings? Vikterna som redan hämtats finns kvar.")) return;
+  try{ showWithings(await api("/api/withings",{method:"DELETE"})); toast("Withings är frånkopplat"); }catch(e){ toast(e.message); }
+};
+// Tillbaka från Withings efter godkännandet.
+function withingsReturn(){
+  const p=new URLSearchParams(location.search), w=p.get("withings"); if(!w) return;
+  history.replaceState(null,"","/app"+location.hash);
+  if(w==="ok"){ const n=+p.get("nya")||0; setTimeout(()=>toast("Withings är kopplat"+(n? ", "+n+(n>1?" vikter":" vikt")+" hämtade" : "")),400); if(n) checkBadges(); }
+  else setTimeout(()=>toast(p.get("meddelande")||"Kopplingen till Withings misslyckades"),400);
+}
+
 function renderAccount(){
   if(!me) return;
   $("#who").textContent="Inloggad som "+(me.name||"")+(me.email? " ("+me.email+")" : "")+".";
@@ -1066,4 +1113,5 @@ renderAccount();
 const h=(location.hash||"").slice(1);
 if(["idag","vikt","halsa","framsteg","installningar"].includes(h)) showView(h);
 renderAll(); checkBadges();
+withingsReturn(); loadWithings();
 })();

@@ -21,6 +21,14 @@ export const config = {
   sessionDays: Number(env.SESSION_DAYS || 30),
   // Absolute base URL used in e-mail links.
   baseUrl: (env.PUBLIC_ORIGIN || `http://127.0.0.1:${env.PORT || 3000}`).replace(/\/$/, ""),
+  // Withings scale (developer.withings.com). Off unless both id and secret are set.
+  withings: {
+    enabled: !!(env.WITHINGS_CLIENT_ID && env.WITHINGS_CLIENT_SECRET),
+    clientId: env.WITHINGS_CLIENT_ID || "",
+    clientSecret: env.WITHINGS_CLIENT_SECRET || "",
+    authUrl: env.WITHINGS_AUTH_URL || "https://account.withings.com",
+    apiUrl: env.WITHINGS_API_URL || "https://wbsapi.withings.net",
+  },
   mail: {
     from: env.MAIL_FROM || "Tallriken <tallriken@parnes.com>",
     // Without SMTP_HOST, mail is logged to the console instead of sent.

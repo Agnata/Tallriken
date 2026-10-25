@@ -324,3 +324,12 @@ test("logout ends the session", async () => {
   assert.equal((await call("/api/logout", { method: "POST", body: {} })).status, 204);
   assert.equal((await call("/api/data")).status, 401);
 });
+
+test("Withings is off without WITHINGS_CLIENT_ID and _SECRET", async () => {
+  const { createWithings } = await import("../server/withings.js");
+  const w = createWithings(db, config);
+  assert.equal(w.enabled, false);
+  assert.deepEqual(w.status(1), { enabled: false, connected: false, syncedAt: null, error: null });
+  assert.equal((await fetch(base + "/api/withings")).status, 401, "needs login");
+  assert.equal((await fetch(base + "/withings/notify", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "userid=1&appli=1" })).status, 200);
+});

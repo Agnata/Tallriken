@@ -6,7 +6,7 @@ Tallriken körs på samma server som LB3 och Vinkällaren och följer samma uppl
 - backup inuti tjänsten och extern kopia med rsync
 - ett installationsskript med `--check`
 
-Sökvägarna nedan är standardvärdena i `deploy/install.sh`. De har ännu inte verifierats mot den körande servern (se avsnitt 13).
+Sökvägarna nedan är standardvärdena i `deploy/install.sh`. De har ännu inte verifierats mot den körande servern (se avsnitt 14).
 
 ## 1. Övergripande arkitektur
 
@@ -37,7 +37,7 @@ Sökvägarna nedan är standardvärdena i `deploy/install.sh`. De har ännu inte
 - Appen har en cache i `localStorage` per användare. En ändring som inte hann sparas (till exempel utan nät) skickas nästa gång, om ingen annan enhet har sparat emellan.
 - Ingen, inte heller administratörer, kan se någon annans dagbok i appen.
 
-**Schemalagt i tjänsten** (kontrolleras varje minut, ingen cron behövs): backup varje natt från kl. 03 svensk tid.
+**Schemalagt i tjänsten** (kontrolleras varje minut, ingen cron behövs): backup varje natt från kl. 03 svensk tid, och en gång i timmen hämtning från Withings för den som inte fått nya vikter på 6 timmar.
 
 ## 2. Viktiga sökvägar
 
@@ -85,6 +85,7 @@ BACKUP_OFFSITE_TARGET=
 | `SMTP_SECURE` | `false` | `true` för port 465 |
 | `SESSION_DAYS` | `30` | Sessionslängd |
 | `BACKUP_KEEP` | `30` | Antal lokala backuper |
+| `WITHINGS_CLIENT_ID`, `WITHINGS_CLIENT_SECRET` | tomt | Withings-vågen (avsnitt 9). Tomt = av. |
 
 E-post används bara till inbjudningar och "Glömt lösenord". Använd SMTP, inte `/usr/sbin/sendmail`: tjänstens sandbox hindrar skrivning till Postfix-kön.
 
@@ -166,7 +167,32 @@ Artefakten sparade dagboken i Claudes artefaktdatabas och i webbläsarens `local
 
 Samma knapp läser in filer från **Ladda ned kopia**.
 
-## 9. Lokal automatisk backup
+## 9. Withings-våg
+
+Varje användare kan koppla sin Withings-våg under Inställningar. Vikten hamnar då under Vikt när personen väger sig.
+
+**Så fungerar det**
+- "Koppla Withings" skickar webbläsaren till Withings, där personen godkänner att Tallriken får läsa mätningar (`user.metrics`). Withings skickar tillbaka till `https://tallriken.parnes.com/withings/callback`, servern hämtar nycklar och alla tidigare vägningar och prenumererar på notiser.
+- Vid varje ny vägning skickar Withings en notis till `/withings/notify?k=…`. Nyckeln `k` räknas fram från klienthemligheten, så notiser från andra ignoreras. Servern hämtar då bara det som är nytt.
+- En gång i timmen hämtar tjänsten för den som inte fått något på 6 timmar, ifall en notis har tappats bort.
+- Varje dag får en vikt: dagens första vägning, i svensk tid. En vikt som personen skrivit in själv ändras aldrig. Vikter från Withings är märkta "från Withings" i listan.
+- Nycklarna lagras per användare i tabellen `withings` och följer med i backuperna. Åtkomstnyckeln gäller 3 timmar och förnyas automatiskt. Withings byter förnyelsenyckeln varje gång, och den nya sparas direkt. En Withings-våg kan bara vara kopplad till en användare.
+- "Koppla från" avslutar notiserna och raderar nycklarna. Vikterna som redan hämtats finns kvar. Tas användaren bort försvinner kopplingen också.
+
+**Inställning**
+1. Skapa ett konto på https://developer.withings.com och en app (Public API, för personligt bruk).
+2. Ange återkopplingsadressen (callback URL) `https://tallriken.parnes.com/withings/callback`.
+3. Lägg in appens Client ID och Client Secret i `/etc/tallriken.env`:
+   ```
+   WITHINGS_CLIENT_ID=…
+   WITHINGS_CLIENT_SECRET=…
+   ```
+   Hemligheten ska bara finnas i miljöfilen, aldrig i Git. Installern bevarar raderna.
+4. `sudo systemctl restart tallriken`. Journalen visar "(Withings på)" när tjänsten startar.
+
+**Felsökning:** ett fel från Withings visas under Inställningar ("Senaste hämtningen misslyckades …") och i journalen. Fel 401 betyder oftast att personen har tagit bort åtkomsten hos Withings. Koppla då från och koppla igen.
+
+## 10. Lokal automatisk backup
 
 Backupen sköts inuti Node-tjänsten: direkt om ingen backup finns, därefter dagligen från kl. 03.00 Europe/Stockholm. Efter ett fel väntar den minst en timme, och felet visas på sidan Admin.
 
@@ -178,7 +204,7 @@ Sidan Admin, under "Drift", visar hälsokontrollerna, backuperna med nedladdning
 3. En räddningskopia av nuläget sparas.
 4. **Allas dagböcker** ersätts med backupens. Konton, sessioner och tvåsteg rörs inte. Versionsnumren räknas upp, så öppna appar hämtar den återställda dagboken i stället för att skriva över den.
 
-## 10. Extern backup med rsync och systemd-timer
+## 11. Extern backup med rsync och systemd-timer
 
 | | |
 |---|---|
@@ -198,7 +224,7 @@ sudo -u tallriken ssh-keygen -t ed25519 -N '' -f /var/lib/tallriken/.ssh/id_ed25
 sudo cat /var/lib/tallriken/.ssh/id_ed25519.pub   # lägg i mottagarens authorized_keys
 ```
 
-## 11. Health endpoint och felsökning
+## 12. Health endpoint och felsökning
 
 `https://tallriken.parnes.com/api/health` svarar 200 när allt är godkänt och 503 annars: `database`, `backup` (högst 30 timmar gammal), `offsite` (lyckad inom 30 timmar, eller `"status": "off"`), `disk` (minst 500 MB ledigt).
 
@@ -213,7 +239,7 @@ cat /opt/tallriken/app/REVISION
 sudo sed 's/=.*//' /etc/tallriken.env   # bara nycklarna
 ```
 
-## 12. Rollback och återställning
+## 13. Rollback och återställning
 
 | | |
 |---|---|
@@ -239,7 +265,7 @@ sudo systemctl start tallriken
 
 Databasen migreras bara framåt (`PRAGMA user_version`, se `server/db.js`).
 
-## 13. Verifiera på den faktiska servern
+## 14. Verifiera på den faktiska servern
 
 - [ ] Att port 3105 är ledig: `sudo ss -ltnp`.
 - [ ] Att DNS för `tallriken.parnes.com` pekar på servern.
@@ -250,3 +276,4 @@ Databasen migreras bara framåt (`PRAGMA user_version`, se `server/db.js`).
 - [ ] Efter ett dygn: att `/api/health` svarar 200.
 - [ ] Att första administratören har slagit på tvåstegsverifiering.
 - [ ] Att dagboken från artefakten är inläst (avsnitt 8).
+- [ ] Withings: appen registrerad med rätt återkopplingsadress, nycklarna i miljöfilen, och att en vägning dyker upp under Vikt inom någon minut.
