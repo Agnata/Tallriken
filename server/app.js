@@ -15,6 +15,7 @@ import { startScheduler } from "./scheduler.js";
 import { createTwoFactor } from "./twofactor.js";
 import { createWithings } from "./withings.js";
 import { withingsRouter } from "./routes/withings.js";
+import { createFoods } from "./foods.js";
 
 const PUBLIC = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
 const page = name => path.join(PUBLIC, name);
@@ -25,6 +26,8 @@ export function createApp(config = defaultConfig, db = openDb(config.dbPath), ma
   const twoFactor = createTwoFactor(db);
   const withings = createWithings(db, config);
   app.locals.withings = withings;
+  const foods = createFoods(config);
+  app.locals.foods = foods;
   const loginLimiter = rateLimit({ windowMs: 15 * 60e3, limit: config.loginLimit ?? 10, standardHeaders: "draft-8", legacyHeaders: false,
     message: { error: "För många försök. Vänta en kvart och försök igen." } });
 
@@ -110,8 +113,17 @@ export function createApp(config = defaultConfig, db = openDb(config.dbPath), ma
   app.get("/konto", requireUser, (_req, res) => res.sendFile(page("konto.html")));
   app.use("/api/data", requireUser, dataRouter(db));
   app.use("/api/withings", requireUser, withingsRouter(withings));
+  app.get("/api/foods/search", requireUser, (req, res) => res.json({ items: foods.search(String(req.query.q || "")), version: foods.status().version }));
+  app.get("/api/foods/brands", requireUser, async (req, res) => {
+    try { res.json({ items: await foods.brands(String(req.query.q || "")) }); }
+    catch (err) { res.status(502).json({ error: `Open Food Facts: ${err.message}` }); }
+  });
   app.get("/admin", requireAdmin, (_req, res) => res.sendFile(page("admin.html")));
-  app.use("/api/admin", requireAdmin, adminRouter(db, auth, mailer, config, twoFactor));
+  app.post("/api/admin/foods/refresh", requireAdmin, (_req, res) => {
+    foods.refresh().catch(err => console.error("Livsmedelsverket:", err.message));
+    res.status(202).json(foods.status());
+  });
+  app.use("/api/admin", requireAdmin, adminRouter(db, auth, mailer, config, twoFactor, foods));
 
   app.use(express.static(PUBLIC, { index: false, extensions: [], maxAge: config.production ? "1h" : 0 }));
   app.use("/api", (_req, res) => res.status(404).json({ error: "Finns inte." }));
@@ -130,7 +142,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const db = openDb(defaultConfig.dbPath);
   const mailer = createMailer(defaultConfig.mail);
   const app = createApp(defaultConfig, db, mailer);
-  if (process.env.SCHEDULER !== "false") startScheduler(db, defaultConfig, app.locals.withings);
+  if (process.env.SCHEDULER !== "false") startScheduler(db, defaultConfig, app.locals.withings, app.locals.foods);
   app.listen(defaultConfig.port, defaultConfig.host, () =>
     console.log(`Tallriken lyssnar på http://${defaultConfig.host}:${defaultConfig.port}` +
       (defaultConfig.withings.enabled ? " (Withings på)" : "")));

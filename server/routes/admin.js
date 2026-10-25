@@ -9,7 +9,7 @@ import { getMeta } from "../db.js";
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // User administration and operations. Mounted behind requireAdmin. Admins never see other users' data.
-export function adminRouter(db, auth, mailer, config, twoFactor) {
+export function adminRouter(db, auth, mailer, config, twoFactor, foods = null) {
   const r = Router();
   const q = {
     list: db.prepare(`SELECT id, email, name, is_admin, created_at, last_login_at, totp_enabled,
@@ -116,6 +116,7 @@ export function adminRouter(db, auth, mailer, config, twoFactor) {
       backupError: getMeta(db, "backup_error") || null,
       offsite: config.offsiteTarget ? offsiteStatus(config.backupDir) || {} : null,
       mail: mailer.enabled,
+      foods: foods?.status() ?? null,
     });
   });
 

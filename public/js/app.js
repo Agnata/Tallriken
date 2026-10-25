@@ -283,7 +283,8 @@ function renderFoodList(){
   else if(foodCat<-1) hits=mine.filter(f=>f[3]===foodCat);
   else if(foodCat>=0) hits=FOODS.filter(f=>f[3]===foodCat);
   else hits=[...mine,...FOODS];
-  if(!hits.length){ const p=document.createElement("p"); p.className="empty"; p.textContent="Ingen träff. Lägg till den som egen matvara nedan."; list.append(p); return; }
+  if(q) remoteSearch(q);
+  if(!hits.length && !q){ const p=document.createElement("p"); p.className="empty"; p.textContent="Ingen träff. Lägg till den som egen matvara nedan."; list.append(p); return; }
   let lastCat=null; const showHeads=!q && foodCat===-1;
   const HEAD={"-2":"Mina matvaror","-3":"Mina måltider","-4":"Mina recept"}, ICON={"-2":"★ ","-3":"🍽 ","-4":"📖 "};
   hits.forEach(([name,por,pts,cat,obj])=>{
@@ -296,6 +297,51 @@ function renderFoodList(){
     b.onclick=()=> cat===-3? addMeal(obj) : openQty({name,portion:por,base:pts,qty:1},null);
     list.append(b);
   });
+  if(q) renderRemote(list, hits.length);
+}
+// Sökning i Livsmedelsverkets livsmedelsdatabas och bland märkesvaror i Open Food Facts, via servern.
+// Det man väljer därifrån sparas under ★ Mina så att det finns direkt nästa gång.
+let remoteQ="", remoteT=null, remote={q:"",lv:[],off:[],state:""}, pendingFav=null;
+function remoteSearch(q){
+  if(q.length<2 || q===remoteQ) return;
+  remoteQ=q; clearTimeout(remoteT);
+  remote={q,lv:[],off:[],state:"loading"};
+  remoteT=setTimeout(async()=>{
+    const e=encodeURIComponent(q);
+    const [lv,off]=await Promise.allSettled([api("/api/foods/search?q="+e), api("/api/foods/brands?q="+e)]);
+    if(remoteQ!==q) return;
+    remote={q, lv: lv.status==="fulfilled"? lv.value.items : [], off: off.status==="fulfilled"? off.value.items : [],
+      state: off.status==="rejected"? "offerr" : "done", version: lv.status==="fulfilled"? lv.value.version : null};
+    if($("#foodDlg").open && $("#foodSearch").value.trim().toLowerCase()===q) renderFoodList();
+  },300);
+}
+function renderRemote(list, localHits){
+  const q=$("#foodSearch").value.trim().toLowerCase();
+  const head=t=>{ const h=document.createElement("div"); h.className="foodgroup"; h.textContent=t; list.append(h); };
+  const note=t=>{ const p=document.createElement("p"); p.className="empty"; p.textContent=t; list.append(p); };
+  if(q.length<2) return;
+  if(remote.q!==q || remote.state==="loading"){ if(!localHits) note("Söker i Livsmedelsverket och bland märkesvaror …"); else { head("Fler träffar"); note("Söker …"); } return; }
+  const row=(f,src)=>{
+    const b=document.createElement("button");
+    const l=document.createElement("span"); l.textContent=f.name;
+    const s=document.createElement("span"); s.className="por"; s.textContent=f.portion; l.append(s);
+    const r=document.createElement("span"); r.className="fp"+(f.points===0?" zero":""); r.textContent=f.points+" p";
+    b.append(l,r);
+    b.onclick=()=>{ pendingFav={name:f.name,portion:f.portion,points:f.points,src}; openQty({name:f.name,portion:f.portion,base:f.points,qty:1},null); };
+    list.append(b);
+  };
+  if(remote.lv.length){ head("Livsmedelsverket, per 100 g"); remote.lv.forEach(f=>row(f,"lv")); }
+  if(remote.off.length){ head("Märkesvaror (Open Food Facts)"); remote.off.forEach(f=>row(f,"off")); }
+  else if(remote.state==="offerr"){ head("Märkesvaror"); note("Kunde inte nå Open Food Facts just nu."); }
+  if(!localHits && !remote.lv.length && !remote.off.length && remote.state!=="offerr") note("Ingen träff. Lägg till den som egen matvara nedan.");
+  if(remote.lv.length||remote.off.length){ const p=document.createElement("p"); p.className="src";
+    p.textContent="Källor: Livsmedelsverkets livsmedelsdatabas"+(remote.version? " (version "+remote.version+")" : "")+" och Open Food Facts (ODbL). Kontrollera gärna mot förpackningen."; list.append(p); }
+}
+// Lägger det valda från Livsmedelsverket eller Open Food Facts under ★ Mina.
+function rememberFav(name){
+  if(!pendingFav || pendingFav.name!==name) return;
+  if(!S.favs.some(f=>f.name===name)) S.favs.unshift({name,portion:pendingFav.portion,points:pendingFav.points,src:pendingFav.src});
+  pendingFav=null;
 }
 // ---------- Mängd ----------
 const fmtN=n=>String(Math.round(n*10)/10).replace(".",",");
@@ -336,6 +382,7 @@ function qNudge(dir){
   qS.qty=qS.u? nv/qS.u.amt : nv; renderQty(true);
 }
 function addFood(name,portion,base,qty){
+  rememberFav(name);
   qty=qty||1; const points=Math.round(base*qty);
   const d=ensureDay(cur); const wasEmpty=!logged(cur);
   d.foods.push({id:uid(),name,portion,base,qty,points,meal:mealTarget});
@@ -553,6 +600,7 @@ function renderRec(){
   $("#rCalc").textContent="Totalt "+Math.round(recTotal())+" p, "+Math.round(recTotal()/recPortions())+" p per portion";
 }
 function addIng(name,portion,base,qty){
+  rememberFav(name);
   recDraft.ings.push({id:uid(),name,portion,base,qty:qty||1});
   if($("#qtyDlg").open) $("#qtyDlg").close(); if($("#foodDlg").open) $("#foodDlg").close();
   renderRec();
