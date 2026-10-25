@@ -65,17 +65,24 @@ before(async () => {
   lv.get("/livsmedel/:n/naringsvarden", (req, res) => { lvCalls++; res.json(LV_NUT[req.params.n]); });
   lvServer = lv.listen(0);
   const off = express();
-  off.get("/cgi/search.pl", (req, res) => {
+  off.get("/search", (req, res) => {
     offCalls++;
     assert.match(req.headers["user-agent"], /^Tallriken\//);
     if (offDown) return res.status(503).end();
-    assert.equal(req.query.json, "1");
-    const products = req.query.search_terms.includes("corn") ? [
-      { code: "1", product_name: "Corn Flakes", brands: "Kellogg's", serving_quantity: 30, nutriments: { "energy-kcal_100g": 378, proteins_100g: 7, sugars_100g: 8, "saturated-fat_100g": 0.2 } },
-      { code: "2", product_name: "Corn Flakes", brands: "Kellogg's", serving_quantity: 30, nutriments: { "energy-kcal_100g": 378 } }, // duplicate
+    assert.match(req.query.fields, /nutriments/);
+    const hits = req.query.q.includes("corn") ? [
+      { code: "9", product_name: "Corn Flakes", brands: ["Nestlé"], countries_tags: ["en:france"], nutriments: { "energy-kcal_100g": 380 } },
+      { code: "1", product_name: "Corn Flakes", brands: ["Kellogg's", "Corn Flakes"], countries_tags: ["en:sweden"], serving_quantity: 30, nutriments: { "energy-kcal_100g": 378, proteins_100g: 7, sugars_100g: 8, "saturated-fat_100g": 0.2 } },
+      { code: "2", product_name: "Corn Flakes", brands: ["Kellogg's"], countries_tags: ["en:sweden"], serving_quantity: 30, nutriments: { "energy-kcal_100g": 378 } }, // duplicate
+      { code: "4", product_name: { sv: "Frosties", en: "Frosties" }, brands: ["Kellogg's"], countries_tags: ["en:sweden"] }, // nutrients from the product API
       { code: "3", product_name: "Utan näring", nutriments: {} },
     ] : [];
-    res.json({ count: products.length, products });
+    res.json({ hits, count: hits.length });
+  });
+  off.get("/api/v2/product/:code", (req, res) => {
+    offCalls++;
+    if (req.params.code !== "4") return res.json({ status: 0 });
+    res.json({ status: 1, product: { product_name: "Frosties", brands: "Kellogg's", serving_quantity: 30, nutriments: { "energy-kcal_100g": 375, proteins_100g: 4.5, sugars_100g: 37, "saturated-fat_100g": 0.1 } } });
   });
   offServer = off.listen(0);
   await Promise.all([lvServer, offServer].map(s => new Promise(r => s.listening ? r() : s.once("listening", r))));
@@ -87,7 +94,7 @@ before(async () => {
   const config = { dbPath: ":memory:", production: false, origin: "", sessionDays: 1, baseUrl: "https://tallriken.test", dataDir,
     backupDir: path.join(dataDir, "backups"), backupKeep: 2, loginLimit: 1000, offsiteTarget: "", mail: {},
     foodsFile: path.join(dataDir, "livsmedel.json"), foodsMin: 1,
-    livsmedelUrl: `http://127.0.0.1:${lvServer.address().port}`, offUrl: `http://127.0.0.1:${offServer.address().port}` };
+    livsmedelUrl: `http://127.0.0.1:${lvServer.address().port}`, offUrl: `http://127.0.0.1:${offServer.address().port}`, offSearchUrl: `http://127.0.0.1:${offServer.address().port}` };
   app = createApp(config, db, createMailer({}));
   server = app.listen(0);
   await new Promise(r => server.once("listening", r));
@@ -126,9 +133,13 @@ test("search Livsmedelsverket: points per 100 g, compounds, needs login", async 
   assert.equal((await fetch(base + "/api/foods/search?q=lax")).status, 401);
 });
 
-test("branded products from Open Food Facts, cached, duplicates and products without energy dropped", async () => {
+test("branded products from Open Food Facts: Swedish first, nutrients filled in, duplicates and products without energy dropped", async () => {
   const r = await (await get("/api/foods/brands?q=Corn%20flakes")).json();
-  assert.deepEqual(r.items, [{ name: "Corn Flakes, Kellogg's", portion: "1 portion (30 g)", points: 4, code: "1" }]);
+  assert.deepEqual(r.items, [
+    { name: "Corn Flakes, Kellogg's", portion: "1 portion (30 g)", points: 4, code: "1" },
+    { name: "Frosties, Kellogg's", portion: "1 portion (30 g)", points: 5, code: "4" },
+    { name: "Corn Flakes, Nestlé", portion: "100 g", points: 12, code: "9" },
+  ]);
   const calls = offCalls;
   await get("/api/foods/brands?q=corn flakes");
   assert.equal(offCalls, calls, "same search within a day is cached");
