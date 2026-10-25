@@ -1,0 +1,114 @@
+/* Inloggning, framsida, Konto och Admin. Själva appen har public/css/app.css (från artefakten). */
+:root{
+  --bg:#F5F7F3; --surface:#FFFFFF; --ink:#1B2421; --muted:#5E6B66; --line:#DDE3DE;
+  --pine:#1F4A3E; --pine-soft:#E3EEE9; --lingon:#B8243B; --cloud:#E39A23; --cloud-soft:#FBEFD9;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#121815; --surface:#1A221E; --ink:#E8EEEA; --muted:#9DABA5; --line:#2C3832;
+    --pine:#7CC4A8; --pine-soft:#1F3029; --lingon:#F07085; --cloud:#F2B552; --cloud-soft:#3A2F1C; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121815; --surface:#1A221E; --ink:#E8EEEA; --muted:#9DABA5; --line:#2C3832;
+  --pine:#7CC4A8; --pine-soft:#1F3029; --lingon:#F07085; --cloud:#F2B552; --cloud-soft:#3A2F1C; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 Figtree,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:"Bricolage Grotesque",Figtree,system-ui,sans-serif;font-weight:700;line-height:1.15;margin:0}
+h1{font-size:clamp(36px,9vw,52px);color:var(--pine)}
+a{color:var(--pine)}
+:focus-visible{outline:3px solid var(--cloud);outline-offset:2px;border-radius:6px}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+.lede{font-size:18px;color:var(--muted);margin:10px 0 0;max-width:40ch}
+.hidden{display:none!important}
+
+/* knappar och formulär */
+.btn{font:inherit;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  background:var(--pine);color:var(--surface);border:1.5px solid var(--pine);border-radius:12px;padding:10px 16px;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn.ghost{background:none;color:var(--pine)}
+.btn.small{font-size:14px;padding:5px 11px;border-radius:10px}
+.btn.danger{background:none;color:var(--lingon);border-color:var(--lingon)}
+.btn[disabled]{opacity:.55;cursor:default}
+.linkbtn{font:inherit;font-weight:600;color:var(--pine);background:none;border:0;padding:0;cursor:pointer}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--muted)}
+label.f input,label.f select{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+label.check{display:flex;align-items:center;gap:8px}
+.err{color:var(--lingon);font-size:14px;margin:6px 0 0;min-height:1.4em}
+.note{font-size:14px;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:20;
+  background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:14px;max-width:calc(100% - 32px);text-align:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.on{opacity:1}
+
+/* sidhuvud för inloggade sidor */
+.topbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px;padding:16px 0 0;font-size:15px}
+.topbar .brand{font-family:"Bricolage Grotesque",Figtree,sans-serif;font-weight:700;font-size:20px;color:var(--pine);text-decoration:none}
+.topbar .who{display:flex;align-items:center;flex-wrap:wrap;gap:14px}
+.topbar .who a{color:var(--muted);text-decoration:none;font-weight:600}
+.topbar .who a[aria-current="page"]{color:var(--pine);text-decoration:underline;text-underline-offset:4px}
+
+/* inloggning */
+.login{max-width:420px;margin:10vh auto 0;padding:0 16px 48px}
+.login form{display:flex;flex-direction:column;gap:12px;margin-top:24px}
+.login .btn{align-self:flex-start;margin-top:6px}
+.back{color:var(--muted);text-decoration:none;font-weight:600}
+
+/* Konto och Admin */
+.page{padding:28px 0 80px}
+.panel{margin-top:18px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px 16px}
+.panel h2{font-size:22px;margin:0 0 4px}
+.panel .sub{color:var(--muted);margin:0 0 14px}
+.stack{display:flex;flex-direction:column;gap:12px;max-width:440px}
+.stack .btn{align-self:flex-start}
+.notice{margin:18px 0 0;padding:12px 14px;border-radius:14px;background:var(--cloud-soft)}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.users{list-style:none;margin:0;padding:0}
+.user{display:grid;grid-template-columns:1fr auto;gap:4px 14px;padding:14px 0;border-top:1px solid var(--line)}
+.user:first-child{border-top:0}
+.user .nm{font-size:18px;font-weight:600}
+.user .meta{font-size:14px;color:var(--muted)}
+.user .badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.badge{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:1px 9px;color:var(--muted)}
+.badge.admin{border-color:var(--pine);color:var(--pine)}
+.user .acts{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;justify-content:flex-end}
+@media (max-width:560px){.user{grid-template-columns:1fr}.user .acts{justify-content:flex-start}}
+.linkbox{display:flex;gap:8px;margin-top:10px}
+.linkbox input{flex:1;min-width:0;font:inherit;font-size:14px;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.checks{list-style:none;margin:0 0 18px;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.checks li{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg)}
+.checks b{display:flex;align-items:center;gap:8px;font-weight:600}
+.checks b::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--pine)}
+.checks li.bad b::before{background:var(--lingon)}
+.checks li.off b::before{background:var(--line)}
+.checks span{display:block;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+h3.minor{font-size:16px;margin:6px 0 0}
+.hist{list-style:none;padding:0;margin:8px 0 0;font-size:14px;color:var(--muted)}
+.hist li{padding:6px 0;border-top:1px solid var(--line)}
+#backups li{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#backups .row-acts{display:flex;gap:14px;align-items:baseline}
+.qr{width:200px;max-width:100%;background:#fff;padding:8px;border-radius:8px}
+.qr svg{display:block;width:100%;height:auto}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;overflow-wrap:anywhere}
+pre.codes{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:16px;line-height:1.7;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;columns:2;margin:0}
+dialog{border:0;border-radius:20px;background:var(--surface);color:var(--ink);padding:0;width:min(560px,calc(100% - 24px));max-height:calc(100dvh - 24px)}
+dialog::backdrop{background:rgba(10,20,15,.45)}
+dialog form{padding:20px 18px 18px}
+dialog h2{font-size:22px;margin:0 0 14px}
+.dlg-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:18px}
+.dlg-actions .spacer{flex:1}
+
+/* framsida */
+.hero{padding:9vh 0 8px}
+.hero .kicker{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 14px;font-weight:600}
+.hero h1{font-size:clamp(52px,14vw,96px)}
+.hero .cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.plate-ill{width:min(220px,60vw);margin:34px 0 0}
+.features{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:40px 0 0}
+@media (max-width:640px){.features{grid-template-columns:1fr}}
+.feature{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px}
+.feature h2{font-size:19px;margin:0 0 6px}
+.feature p{margin:0;color:var(--muted)}
+.home footer{padding:36px 0 48px;color:var(--muted);font-size:14px}

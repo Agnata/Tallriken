@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tallriken – poäng, rörelse och vikt</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="wrap">
+
+<!-- IDAG -->
+<div class="view on" id="v-idag">
+  <header class="top">
+    <h1>Tallriken</h1>
+    <div class="datenav">
+      <button id="prevDay" aria-label="Föregående dag">‹</button>
+      <span id="dayLabel">Idag</span>
+      <button id="nextDay" aria-label="Nästa dag">›</button>
+    </div>
+  </header>
+
+  <div class="plate" aria-live="polite">
+    <svg viewBox="0 0 200 200" aria-hidden="true">
+      <circle class="rim" cx="100" cy="100" r="96" stroke-width="1"/>
+      <circle class="ring-bg" cx="100" cy="100" r="78" stroke-width="16"/>
+      <circle class="ring-food" id="ringFood" cx="100" cy="100" r="78" stroke-width="16" stroke-dasharray="0 999"/>
+      <circle class="ring-extra" id="ringExtra" cx="100" cy="100" r="78" stroke-width="16" stroke-dasharray="0 999"/>
+    </svg>
+    <div class="center">
+      <div class="big" id="leftBig">0</div>
+      <div class="small" id="leftLabel">poäng kvar idag</div>
+    </div>
+  </div>
+  <div class="summary">
+    <span>Ätit <b id="sEaten">0</b></span>
+    <span>Rörelse <b id="sAct">+0</b></span>
+    <span>Veckobuffert <b id="sWeek">0</b></span>
+  </div>
+  <p class="cheer" id="cheer"></p>
+  <div id="focusLine"></div>
+
+  <section class="block">
+    <div class="block-head"><h3>Bra för dig</h3><span class="pts">efter kostråden</span></div>
+    <div id="goals"></div>
+  </section>
+
+  <section class="block">
+    <div class="block-head"><h3>Smakbitar</h3><span class="pts">ett tryck, så är det loggat</span></div>
+    <div class="bites" id="bites"></div>
+  </section>
+  <div class="toolrow"><button class="btn ghost" id="copyYday">Kopiera gårdagen</button></div>
+
+  <div id="meals"></div>
+
+  <section class="block">
+    <div class="block-head"><h3>Rörelse</h3><span class="pts" id="actPts"></span></div>
+    <ul class="items" id="actList"></ul>
+    <button class="add" id="addAct">Lägg till aktivitet</button>
+  </section>
+
+  <section class="block">
+    <div class="block-head"><h3>Vatten</h3><span class="pts" id="waterTxt"></span></div>
+    <div class="cups" id="cups"></div>
+  </section>
+
+  <section class="block">
+    <div class="block-head"><h3>Inte bara vågen</h3><span class="pts">hur mår du?</span></div>
+    <div class="moodrow"><span>Sömn i natt</span><div class="seg" id="dSleep"></div></div>
+    <div class="moodrow"><span>Ork</span><div class="seg" id="dEnergy"></div></div>
+    <div class="moodrow"><span>Hur sitter kläderna?</span><div class="seg txt" id="dClothes"></div></div>
+    <label class="f"><span>Dagens seger som inte syns på vågen</span><input type="text" id="dWin" maxlength="120" placeholder="t.ex. gick trapporna utan att bli andfådd"></label>
+  </section>
+</div>
+
+<!-- VIKT -->
+<div class="view" id="v-vikt">
+  <header class="top"><h1>Vikt</h1></header>
+  <section class="block">
+    <div class="weight-hero">
+      <div class="now" id="wNow">–</div>
+      <div class="note" id="wDelta"></div>
+    </div>
+    <div class="bar"><i id="wBar" style="width:0%"></i></div>
+    <div class="note" id="wGoalTxt"></div>
+  </section>
+  <div id="plateau"></div>
+  <section class="block">
+    <h3>Väg dig</h3>
+    <p class="note">En gång i veckan, samma dag och tid, räcker gott. Vikten svänger från dag till dag.</p>
+    <div class="row">
+      <label class="f"><span>Datum</span><input type="date" id="wDate"></label>
+      <label class="f"><span>Vikt (kg)</span><input type="number" id="wKg" step="0.1" min="30" max="300" inputmode="decimal"></label>
+    </div>
+    <button class="btn" id="wSave">Spara vikt</button>
+  </section>
+  <section class="block">
+    <h3>Kurvan</h3>
+    <div class="chartbox" id="wChart"></div>
+    <ul class="items" id="wList" style="margin-top:10px"></ul>
+  </section>
+  <section class="block">
+    <h3>Kroppsmått</h3>
+    <p class="note">Mät på samma ställe och samma sida varje gång, gärna på morgonen. Var fjärde vecka räcker, centimetrarna syns ofta innan vågen rör sig.</p>
+    <label class="f"><span>Datum</span><input type="date" id="mDate"></label>
+    <div class="mgrid">
+      <label class="f"><span>Byst (cm)</span><input type="text" inputmode="decimal" id="m_byst"></label>
+      <label class="f"><span>Midja (cm)</span><input type="text" inputmode="decimal" id="m_midja"></label>
+      <label class="f"><span>Höfter (cm)</span><input type="text" inputmode="decimal" id="m_hoft"></label>
+      <label class="f"><span>Överarm (cm)</span><input type="text" inputmode="decimal" id="m_arm"></label>
+      <label class="f"><span>Lår (cm)</span><input type="text" inputmode="decimal" id="m_lar"></label>
+    </div>
+    <button class="btn" id="mSave">Spara mått</button>
+  </section>
+  <section class="block">
+    <div class="block-head"><h3>Måttkurvan</h3><span class="pts" id="mTotal"></span></div>
+    <div class="chips" id="mChips"></div>
+    <div class="chartbox" id="mChart"></div>
+    <div id="mTable"></div>
+    <ul class="items" id="mList" style="margin-top:6px"></ul>
+  </section>
+</div>
+
+<!-- HÄLSA -->
+<div class="view" id="v-halsa">
+  <header class="top"><h1>Hälsa</h1></header>
+  <section class="block">
+    <div class="block-head"><h3>Veckans träning</h3><span class="pts" id="trainWeek"></span></div>
+    <div id="trainGoals"></div>
+    <div class="row" style="margin-top:10px"><button class="btn" id="logGym">Logga gympass</button><button class="btn ghost" id="logCardio">Logga kondition</button></div>
+    <p class="note" id="trainTip" style="margin-bottom:0"></p>
+  </section>
+  <section class="block">
+    <h3>Bättre kondition</h3>
+    <p class="note">Konditionen förbättras snabbast med regelbundenhet. Det mesta ska gå i lugnt tempo, och en gång i veckan tar du i lite extra.</p>
+    <ol class="tiplist">
+      <li><b>Vecka 1–3, bygg grunden:</b> tre pass på 20–30 minuter i lagom tempo, till exempel crosstrainer, cykel, rask promenad eller stavgång. Smidigast är 15–20 minuter direkt efter styrkan på gymmet.</li>
+      <li><b>Vecka 4–6, lägg till intervaller</b> en gång i veckan: 5 minuter uppvärmning, sedan 4 gånger 2 minuter hårt och 2 minuter lugnt, och 5 minuter nedvarvning.</li>
+      <li><b>Vecka 7 och framåt:</b> öka till 6 intervaller, eller förläng de lugna passen till 40–45 minuter.</li>
+    </ol>
+    <p class="note"><b>Pratregeln:</b> lugnt tempo betyder att du kan prata i hela meningar, hårt att du bara orkar några ord. Logga lugna pass som ”lagom” och intervaller som ”svettigt”. Promenader i lugnt tempo räknas inte in i konditionsminuterna.</p>
+    <p class="note">Har du besvär med hjärta eller blodtryck, börja lugnt och stäm av med vårdcentralen innan du lägger in intervaller.</p>
+  </section>
+  <section class="block">
+    <div class="block-head"><h3>Hemmapass</h3><span class="pts" id="stWeek"></span></div>
+    <p class="note">Som extrapass, eller när du inte hinner till gymmet. Inga redskap behövs.</p>
+    <div class="seg" id="progSeg"></div>
+    <p class="note" id="progDesc"></p>
+    <div id="exList"></div>
+    <button class="btn" id="exDone" style="margin-top:10px">Klart, logga passet</button>
+    <p class="note">Det ska kännas jobbigt de sista gångerna, men aldrig göra ont. Har du ont i leder eller besvär med hjärta eller blodtryck, fråga gärna en fysioterapeut vad som passar dig.</p>
+  </section>
+  <section class="block">
+    <div class="block-head"><h3>Dagsljus</h3><span class="pts" id="dlWeek"></span></div>
+    <label class="f"><span>Ort</span><select id="place"></select></label>
+    <div class="sun" id="sun"></div>
+    <p id="sunTip" style="margin:6px 0 12px"></p>
+    <button class="btn" id="dlToggle"></button>
+    <button class="btn ghost" id="dlWalk" style="margin-top:8px">Logga en promenad i dagsljus, 20 min</button>
+    <h3 style="margin-top:16px">När det är mörkt ute</h3>
+    <ul class="tiplist">
+      <li>Gå ut mitt på dagen, även när det är mulet. Dagsljus är mycket starkare än inomhusbelysning.</li>
+      <li>Tänd starkt ljus på morgonen, gärna en dagsljuslampa vid frukosten.</li>
+      <li>Planera ett mellanmål på eftermiddagen. Suget efter sött ökar ofta när det blir mörkt.</li>
+      <li>Fråga vårdcentralen om D-vitamin. Kroppen bildar väldigt lite av det under vinterhalvåret.</li>
+    </ul>
+  </section>
+</div>
+
+<!-- FRAMSTEG -->
+<div class="view" id="v-framsteg">
+  <header class="top"><h1>Framsteg</h1></header>
+  <section class="block">
+    <div class="stats">
+      <div><b id="stStreak">0</b><span>dagar i rad</span></div>
+      <div><b id="stDays">0</b><span>loggade dagar</span></div>
+      <div><b id="stMin">0</b><span>aktiva min i veckan</span></div>
+    </div>
+  </section>
+  <section class="block">
+    <h3>Veckosummering</h3>
+    <div class="chips" id="sumChips"></div>
+    <div id="summary"></div>
+  </section>
+  <section class="block">
+    <h3>Delmål och belöningar</h3>
+    <p class="note">Bestäm i förväg hur du ska fira. Gärna något annat än mat, till exempel en bok, en massage eller nya träningsskor.</p>
+    <div id="rwList"></div>
+    <div class="row">
+      <label class="f"><span>Mål</span><select id="rwKind"><option value="kg">kg ner</option><option value="streak">dagar i rad</option><option value="cm">cm ner, kroppsmått</option><option value="min">aktiva min på en vecka</option></select></label>
+      <label class="f" style="flex:.5"><span>Antal</span><input type="text" id="rwTarget" inputmode="decimal"></label>
+    </div>
+    <label class="f"><span>Belöning</span><input type="text" id="rwReward" maxlength="60" placeholder="t.ex. ny bok"></label>
+    <button class="btn ghost" id="rwAdd">Lägg till delmål</button>
+  </section>
+  <section class="block">
+    <h3 style="margin-bottom:10px">Veckan</h3>
+    <div class="chartbox" id="weekChart"></div>
+  </section>
+  <section class="block">
+    <h3>Sömn och ork</h3>
+    <p class="note" style="margin:4px 0 8px"><span class="dot" style="background:var(--m4)"></span>sömn &nbsp; <span class="dot" style="background:var(--cloud)"></span>ork, senaste tre veckorna</p>
+    <div class="chartbox" id="moodChart"></div>
+    <p class="note" id="clothesNote"></p>
+  </section>
+  <section class="block">
+    <h3>Mina segrar</h3>
+    <ul class="items" id="winList"></ul>
+  </section>
+  <section class="block">
+    <h3 style="margin-bottom:10px">Märken</h3>
+    <div class="badges" id="badges"></div>
+  </section>
+</div>
+
+<!-- INSTÄLLNINGAR -->
+<div class="view" id="v-installningar">
+  <header class="top"><h1>Inställningar</h1></header>
+  <section class="block">
+    <label class="f"><span>Namn (för peppen)</span><input type="text" id="setName" maxlength="40"></label>
+    <div class="row">
+      <label class="f"><span>Längd (cm)</span><input type="number" id="setHeight" min="120" max="220"></label>
+      <label class="f"><span>Målvikt (kg)</span><input type="number" id="setGoal" step="0.1" min="35" max="250"></label>
+    </div>
+    <h3 style="margin-top:14px">Räkna fram mina poäng</h3>
+    <div class="row">
+      <label class="f"><span>Kön</span><select id="setSex"><option value="kvinna">Kvinna</option><option value="man">Man</option></select></label>
+      <label class="f"><span>Ålder</span><input type="number" id="setAge" min="18" max="100"></label>
+    </div>
+    <div class="row">
+      <label class="f"><span>Nuvarande vikt (kg)</span><input type="number" id="setKg" step="0.1" min="30" max="300" inputmode="decimal"></label>
+      <label class="f"><span>Vardagsrörelse</span><select id="setPal"><option value="1.4">Mest stillasittande</option><option value="1.55">En del vardagsrörelse</option><option value="1.7">Fysiskt jobb</option></select></label>
+    </div>
+    <p class="note">Träning loggar du under Rörelse, den ska inte räknas in här.</p>
+    <button class="btn ghost" id="setCalc">Beräkna dagliga poäng</button>
+    <p class="note" id="calcOut" aria-live="polite"></p>
+    <div class="row">
+      <label class="f"><span>Dagliga poäng</span><input type="number" id="setDaily" min="18" max="45"></label>
+      <label class="f"><span>Veckobuffert</span><input type="number" id="setWeekly" min="0" max="50"></label>
+    </div>
+    <div class="row">
+      <label class="f"><span>Gympass per vecka</span><input type="number" id="setGym" min="1" max="7"></label>
+      <label class="f"><span>Konditionsmin per vecka</span><input type="number" id="setCardio" min="30" max="600" step="10"></label>
+    </div>
+    <div id="setWarn"></div>
+    <p class="note">Ett lugnt tempo, runt ett halvt kilo i veckan, brukar hålla i längden. Dagspoängen kan inte sättas under 18.</p>
+    <button class="btn" id="setSave">Spara inställningar</button>
+  </section>
+  <section class="block">
+    <h3>Så funkar poängen</h3>
+    <p class="note">Poängen bygger på energi, socker och mättat fett, minus protein. Frukt, bär och grönsaker är 0 poäng. Rörelse ger extrapoäng samma dag. Veckobufferten tar emot det du går över en dag, så en middag ute förstör inte veckan.</p>
+    <p class="note">Dagspoängen räknas fram från ditt energibehov (ålder, kön, längd, vikt och vardagsrörelse) minus ett lugnt underskott på cirka 500 kcal. För kvinnor går det aldrig under 1 200 kcal. Efter klimakteriet sjunker energibehovet medan behovet av protein och kalcium snarare ökar, därför följer ”Bra för dig” protein till varje måltid, mejeriprodukter, frukt och grönt samt fisk.</p>
+  </section>
+  <section class="block">
+    <h3>Mina måltider</h3>
+    <p class="note">Spara en måltid med ”Spara som vanlig måltid” under respektive måltid på Idag-sidan. Du hittar dem sedan under Måltider när du lägger till mat.</p>
+    <ul class="items" id="libMeals"></ul>
+  </section>
+  <section class="block">
+    <h3>Mina recept</h3>
+    <ul class="items" id="libRecipes"></ul>
+    <button class="add" id="newRecipe2">Nytt recept</button>
+  </section>
+  <section class="block">
+    <h3>Smakbitar</h3>
+    <p class="note">Snabbknappar på Idag-sidan. Ett tryck loggar biten som mellanmål.</p>
+    <ul class="items" id="libBites"></ul>
+    <div class="row">
+      <label class="f"><span>Namn</span><input type="text" id="bName" maxlength="30" placeholder="t.ex. Hallontryffel"></label>
+      <label class="f" style="flex:.6"><span>Mängd</span><input type="text" id="bPor" maxlength="20" value="1 st"></label>
+      <label class="f" style="flex:.5"><span>Poäng</span><input type="text" id="bPts" inputmode="numeric"></label>
+    </div>
+    <p class="note">Osäker på poängen? En pralin är ungefär 2 p, en tryffel 3 p och 10 g choklad 2 p.</p>
+    <button class="btn ghost" id="bAdd">Lägg till smakbit</button>
+  </section>
+  <section class="block">
+    <h3>Konto</h3>
+    <p class="note" id="who"></p>
+    <div class="toolrow">
+      <a class="btn ghost" href="/konto">Lösenord och tvåsteg</a>
+      <a class="btn ghost hidden" href="/admin" id="adminLink">Admin</a>
+    </div>
+    <button class="btn ghost" id="logout">Logga ut</button>
+  </section>
+  <section class="block">
+    <h3>Kopia av dagboken</h3>
+    <p class="note">Allt sparas på servern och backas upp varje natt. Här kan du också ladda ned en egen kopia, eller läsa in en kopia, till exempel det du loggat i artefakten.</p>
+    <div class="toolrow">
+      <button class="btn ghost" id="exportData">Ladda ned kopia</button>
+      <button class="btn ghost" id="importData">Läs in kopia</button>
+    </div>
+    <input type="file" id="importFile" accept="application/json,.json" class="hidden">
+  </section>
+  <section class="block">
+    <h3>Rensa</h3>
+    <p class="note">Tar bort all loggning, vikt och inställningar.</p>
+    <button class="btn ghost" id="resetAll">Rensa allt</button>
+  </section>
+</div>
+
+<p class="sync" id="sync"></p>
+</div>
+
+<nav class="tabs" role="tablist">
+  <div class="in">
+    <button role="tab" data-v="idag" aria-selected="true">Idag</button>
+    <button role="tab" data-v="vikt" aria-selected="false">Vikt</button>
+    <button role="tab" data-v="halsa" aria-selected="false">Hälsa</button>
+    <button role="tab" data-v="framsteg" aria-selected="false">Framsteg</button>
+    <button role="tab" data-v="installningar" aria-selected="false" class="gear" aria-label="Inställningar">⚙️</button>
+  </div>
+</nav>
+
+<!-- Matdialog -->
+<dialog id="foodDlg">
+  <div class="dlg">
+    <div class="dlg-head"><h2 id="foodTitle">Lägg till mat</h2><button data-close aria-label="Stäng">×</button></div>
+    <input type="text" id="foodSearch" placeholder="Sök, t.ex. kvarg, knäcke, lax">
+    <div class="chips" id="chips"></div>
+    <div class="foodlist" id="foodList"></div>
+    <details class="custom">
+      <summary>Egen matvara</summary>
+      <label class="f"><span>Namn</span><input type="text" id="cName" maxlength="50"></label>
+      <div class="row">
+        <label class="f"><span>kcal</span><input type="number" id="cKcal" min="0" inputmode="decimal"></label>
+        <label class="f"><span>Protein (g)</span><input type="number" id="cProt" min="0" step="0.1" inputmode="decimal"></label>
+      </div>
+      <div class="row">
+        <label class="f"><span>Socker (g)</span><input type="number" id="cSug" min="0" step="0.1" inputmode="decimal"></label>
+        <label class="f"><span>Mättat fett (g)</span><input type="number" id="cFat" min="0" step="0.1" inputmode="decimal"></label>
+      </div>
+      <div class="calc" id="cCalc">= 0 poäng</div>
+      <button class="btn" id="cAdd">Lägg till och spara som favorit</button>
+    </details>
+    <button class="linkbtn" id="toRecipe">📖 Skapa ett eget recept</button>
+  </div>
+</dialog>
+
+<!-- Aktivitetsdialog -->
+<dialog id="actDlg">
+  <div class="dlg">
+    <div class="dlg-head"><h2>Lägg till rörelse</h2><button data-close aria-label="Stäng">×</button></div>
+    <label class="f"><span>Aktivitet</span>
+      <select id="aType">
+        <option>Gym, styrka</option><option>Gym, kondition</option><option>Gruppträning</option>
+        <option>Promenad</option><option>Stavgång</option><option>Cykling</option><option>Löpning</option>
+        <option>Simning</option><option>Styrketräning hemma</option><option>Yoga</option><option>Skidor</option>
+        <option>Dans</option><option>Trädgård / snöskottning</option><option>Annat</option>
+      </select>
+    </label>
+    <label class="f"><span>Minuter</span><input type="number" id="aMin" min="5" max="300" value="30" inputmode="numeric"></label>
+    <span class="note">Hur ansträngande?</span>
+    <div class="seg" id="aInt">
+      <button data-i="1" aria-pressed="false">Lätt</button>
+      <button data-i="2" aria-pressed="true">Lagom</button>
+      <button data-i="3" aria-pressed="false">Svettigt</button>
+    </div>
+    <div class="calc" id="aCalc"></div>
+    <button class="btn" id="aAdd">Lägg till</button>
+  </div>
+</dialog>
+
+<!-- Receptdialog -->
+<dialog id="recDlg">
+  <div class="dlg">
+    <div class="dlg-head"><h2 id="rTitle">Nytt recept</h2><button data-close aria-label="Stäng">×</button></div>
+    <div style="overflow:auto;flex:1">
+      <div class="row">
+        <label class="f"><span>Namn</span><input type="text" id="rName" maxlength="50"></label>
+        <label class="f" style="flex:.5"><span>Portioner</span><input type="text" id="rPor" inputmode="numeric"></label>
+      </div>
+      <h3 style="margin-top:6px">Ingredienser</h3>
+      <ul class="items" id="rIngs"></ul>
+      <button class="add" id="rAddIng">Lägg till ingrediens</button>
+      <div class="calc" id="rCalc"></div>
+    </div>
+    <button class="btn" id="rSave">Spara recept</button>
+    <button class="btn ghost" id="rDel" style="margin-top:8px">Ta bort recept</button>
+  </div>
+</dialog>
+
+<!-- Namndialog -->
+<dialog id="nameDlg">
+  <div class="dlg">
+    <div class="dlg-head"><h2 id="nTitle"></h2><button data-close aria-label="Stäng">×</button></div>
+    <label class="f"><span>Namn</span><input type="text" id="nVal" maxlength="40"></label>
+    <button class="btn" id="nSave">Spara</button>
+  </div>
+</dialog>
+
+<!-- Mängddialog -->
+<dialog id="qtyDlg">
+  <div class="dlg">
+    <div class="dlg-head"><h2 id="qName"></h2><button data-close aria-label="Stäng">×</button></div>
+    <p class="note" id="qPor" style="margin:0"></p>
+    <div class="qty">
+      <button id="qMinus" aria-label="Mindre">−</button>
+      <label class="qin"><input type="text" id="qVal" inputmode="decimal" aria-label="Mängd"><span id="qUnit"></span></label>
+      <button id="qPlus" aria-label="Mer">+</button>
+    </div>
+    <span class="note">Snabbval i portioner</span>
+    <div class="seg" id="qQuick"></div>
+    <div class="calc" id="qPts"></div>
+    <button class="btn" id="qSave">Lägg till</button>
+    <button class="btn ghost" id="qDel" style="margin-top:8px">Ta bort</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+
+
+<script src="/js/app.js" type="module"></script>
+</body>
+</html>

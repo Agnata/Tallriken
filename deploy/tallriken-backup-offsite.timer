@@ -1,0 +1,11 @@
+# Installeras till /etc/systemd/system/. Aktiveras bara när BACKUP_OFFSITE_TARGET är satt.
+[Unit]
+Description=Tallriken: daglig extern kopia av backuper
+
+[Timer]
+OnCalendar=*-*-* 05:00:00 Europe/Stockholm
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

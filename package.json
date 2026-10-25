@@ -1,0 +1,25 @@
+{
+  "name": "tallriken",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tallriken – poäng, rörelse och vikt på tallriken.parnes.com",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node server/app.js",
+    "dev": "node --watch server/app.js",
+    "add-user": "node scripts/add-user.js",
+    "reset-2fa": "node scripts/reset-2fa.js",
+    "backup": "node scripts/backup.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "nodemailer": "^10.2.1",
+    "qrcode": "^1.5.4"
+  }
+}
