@@ -100,7 +100,7 @@
     <button class="btn" id="wSave">Spara vikt</button>
   </section>
   <section class="block">
-    <h3>Kurvan</h3>
+    <div class="block-head"><h3>Kurvan</h3><button class="linkbtn hidden" id="wBig" style="padding:0">⤢ Förstora</button></div>
     <div class="chips" id="wChips"></div>
     <div class="clegend" id="wLegend"></div>
     <div class="chartbox" id="wChart"></div>
@@ -230,6 +230,8 @@
       <label class="f"><span>Längd (cm)</span><input type="number" id="setHeight" min="120" max="220"></label>
       <label class="f"><span>Målvikt (kg)</span><input type="number" id="setGoal" step="0.1" min="35" max="250"></label>
     </div>
+    <label class="f"><span>Startdatum för viktresan</span><input type="date" id="setStart"></label>
+    <p class="note" style="margin-top:0">"Kg ner sedan start", målstapeln, märkena och delmålen räknas från första vägningen den dagen eller senare. Lämna tomt för att räkna från första vägningen någonsin.</p>
     <h3 style="margin-top:14px">Räkna fram mina poäng</h3>
     <div class="row">
       <label class="f"><span>Kön</span><select id="setSex"><option value="kvinna">Kvinna</option><option value="man">Man</option></select></label>
@@ -327,6 +329,17 @@
     <button role="tab" data-v="installningar" aria-selected="false" class="gear" aria-label="Inställningar">⚙️</button>
   </div>
 </nav>
+
+<!-- Stor viktkurva -->
+<dialog id="chartDlg" class="big" aria-labelledby="chartTitle">
+  <div class="dlg">
+    <div class="dlg-head"><h2 id="chartTitle">Viktkurvan</h2><button data-close aria-label="Stäng">×</button></div>
+    <div class="chips" id="bigChips"></div>
+    <div class="clegend" id="bigLegend"></div>
+    <div class="chartbox" id="bigChart"></div>
+    <p class="note hidden" id="bigHint" style="margin:8px 0 0">Vänd telefonen för en bredare kurva.</p>
+  </div>
+</dialog>
 
 <!-- Matdialog -->
 <dialog id="foodDlg">

@@ -89,4 +89,15 @@ test("weight chart: 7-day trend, round axis values, time labels", () => {
   assert.deepEqual(L.timeTicks("2026-10-01", "2026-10-30"), ["2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26"], "Mondays for a month");
   assert.deepEqual(L.timeTicks("2026-03-08", "2026-10-14", 4), ["2026-04-01", "2026-06-01", "2026-08-01", "2026-10-01"], "every other month start");
   assert.deepEqual(L.timeTicks("2025-12-15", "2026-02-20"), ["2026-01-01", "2026-02-01"], "across new year");
+  assert.deepEqual(L.timeTicks("2019-11-01", "2026-10-25", 6), ["2020-01-01", "2022-01-01", "2024-01-01", "2026-01-01"], "years for long spans");
+});
+
+test("weekly means for long periods, and the start weight", () => {
+  const pts = [["2026-10-19", 80], ["2026-10-21", 82], ["2026-10-25", 81], ["2026-10-26", 79]].map(([date, kg]) => ({ date, kg }));
+  assert.deepEqual(L.byWeek(pts), [{ date: "2026-10-22", from: "2026-10-19", n: 3, kg: 81 }, { date: "2026-10-29", from: "2026-10-26", n: 1, kg: 79 }]);
+  assert.deepEqual(L.byWeek(pts, "last").map(w => w.kg), [81, 79]);
+  assert.equal(L.startWeight(pts, "2026-10-20").date, "2026-10-21", "first weighing on or after the start date");
+  assert.equal(L.startWeight(pts, null).date, "2026-10-19");
+  assert.equal(L.startWeight(pts, "2027-01-01").date, "2026-10-19", "a start date after every weighing falls back to the first");
+  assert.equal(L.startWeight([], "2026-10-20"), null);
 });

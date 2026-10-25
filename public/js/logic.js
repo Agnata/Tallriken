@@ -80,16 +80,35 @@ export function niceTicks(lo,hi,n=4){
   return ticks;
 }
 
-// Dates to label on a time axis from..to: Mondays for short spans, else month starts,
-// thinned to at most `max` labels.
+// Dates to label on a time axis from..to: Mondays for short spans, new years for spans over two
+// years, else month starts; thinned to at most `max` labels.
 export function timeTicks(from,to,max=6){
   const days=(new Date(to+"T12:00:00")-new Date(from+"T12:00:00"))/864e5;
   let all=[];
   if(days<=45){ for(let d=mondayOf(from); d<=to; d=addDays(d,7)) if(d>=from) all.push(d); }
+  else if(days>730){ for(let y=+from.slice(0,4)+1; y<=+to.slice(0,4); y++) all.push(y+"-01-01"); }
   else{
     let [y,m]=from.split("-").map(Number);
     for(;;){ const d=y+"-"+String(m).padStart(2,"0")+"-01"; if(d>to) break; if(d>=from) all.push(d); m++; if(m>12){ m=1; y++; } }
   }
   const step=Math.max(1,Math.ceil(all.length/max));
   return all.filter((_,i)=>i%step===0);
+}
+
+// Weighings grouped per ISO week: the mean (or the last value) of each week, placed on its
+// Thursday so the point sits mid-week. For long periods, where daily values are just noise.
+export function byWeek(points, how="mean"){
+  const out=[]; let cur=null;
+  for(const p of points){
+    const mon=mondayOf(p.date);
+    if(!cur || cur.from!==mon){ cur={from:mon, date:addDays(mon,3), sum:0, n:0, last:0}; out.push(cur); }
+    cur.sum+=p.kg; cur.n++; cur.last=p.kg;
+  }
+  return out.map(w=>({date:w.date, from:w.from, n:w.n, kg: how==="last"? w.last : w.sum/w.n}));
+}
+
+// The weighing a weight journey starts from: the first one on or after startDate, else the first.
+export function startWeight(sorted, startDate){
+  if(!sorted.length) return null;
+  return (startDate && sorted.find(w=>w.date>=startDate)) || sorted[0];
 }
