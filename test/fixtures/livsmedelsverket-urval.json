@@ -1,0 +1,357 @@
+{
+ "source": "Livsmedelsverkets livsmedelsdatabas, export 2016-11-16 (CC BY 4.0), via github.com/friberger/kodamat",
+ "note": "Riktiga näringsvärden per 100 g för livsmedel som också finns i appens egen lista. grams är en vanlig vikt för appens portion.",
+ "items": [
+  {
+   "app": "Yoghurt naturell 3 %",
+   "portion": "2 dl",
+   "appPoints": 5,
+   "grams": 200,
+   "livsmedelsverket": "Yoghurt naturell fett 3 %",
+   "per100g": {
+    "kcal": 60.1,
+    "prot": 3.42,
+    "sug": 0.0,
+    "fat": 1.97
+   }
+  },
+  {
+   "app": "Filmjölk 3 %",
+   "portion": "2 dl",
+   "appPoints": 5,
+   "grams": 200,
+   "livsmedelsverket": "Filmjölk fett 3%",
+   "per100g": {
+    "kcal": 60.1,
+    "prot": 3.42,
+    "sug": 0.0,
+    "fat": 1.97
+   }
+  },
+  {
+   "app": "Kvarg naturell",
+   "portion": "2 dl",
+   "appPoints": 2,
+   "grams": 200,
+   "livsmedelsverket": "Kvarg färskost fett 1% Kesella lätt",
+   "per100g": {
+    "kcal": 75.1,
+    "prot": 12.7,
+    "sug": 0.0,
+    "fat": 0.66
+   }
+  },
+  {
+   "app": "Keso 4 %",
+   "portion": "1 dl",
+   "appPoints": 3,
+   "grams": 100,
+   "livsmedelsverket": "Keso färskost fett 4%",
+   "per100g": {
+    "kcal": 92.7,
+    "prot": 12.0,
+    "sug": 0.0,
+    "fat": 2.62
+   }
+  },
+  {
+   "app": "Kycklingfilé",
+   "portion": "150 g",
+   "appPoints": 3,
+   "grams": 150,
+   "livsmedelsverket": "Kyckling bröstfilé u skinn rå",
+   "per100g": {
+    "kcal": 104.5,
+    "prot": 23.1,
+    "sug": 0.0,
+    "fat": 0.38
+   }
+  },
+  {
+   "app": "Fläskfilé",
+   "portion": "150 g",
+   "appPoints": 3,
+   "grams": 150,
+   "livsmedelsverket": "Gris fläskfilé rå",
+   "per100g": {
+    "kcal": 106.7,
+    "prot": 20.6,
+    "sug": 0.0,
+    "fat": 0.95
+   }
+  },
+  {
+   "app": "Köttfärs 10 %",
+   "portion": "125 g",
+   "appPoints": 6,
+   "grams": 125,
+   "livsmedelsverket": "Nötfärs fett 10% stekt",
+   "per100g": {
+    "kcal": 225.0,
+    "prot": 25.06,
+    "sug": 0.0,
+    "fat": 6.2
+   }
+  },
+  {
+   "app": "Falukorv",
+   "portion": "100 g",
+   "appPoints": 8,
+   "grams": 100,
+   "livsmedelsverket": "Falukorv fett 19%",
+   "per100g": {
+    "kcal": 254.4,
+    "prot": 12.7,
+    "sug": 0.0,
+    "fat": 7.3
+   }
+  },
+  {
+   "app": "Torsk",
+   "portion": "150 g",
+   "appPoints": 2,
+   "grams": 150,
+   "livsmedelsverket": "Torsk rå",
+   "per100g": {
+    "kcal": 78.3,
+    "prot": 18.19,
+    "sug": 0.0,
+    "fat": 0.08
+   }
+  },
+  {
+   "app": "Lax",
+   "portion": "125 g",
+   "appPoints": 6,
+   "grams": 125,
+   "livsmedelsverket": "Lax rå",
+   "per100g": {
+    "kcal": 180.9,
+    "prot": 18.4,
+    "sug": 0.0,
+    "fat": 2.55
+   }
+  },
+  {
+   "app": "Ägg",
+   "portion": "1 st",
+   "appPoints": 2,
+   "grams": 55,
+   "livsmedelsverket": "Ägg konventionellt rått",
+   "per100g": {
+    "kcal": 137.4,
+    "prot": 12.25,
+    "sug": 0.0,
+    "fat": 2.59
+   }
+  },
+  {
+   "app": "Knäckebröd",
+   "portion": "1 skiva",
+   "appPoints": 1,
+   "grams": 13,
+   "livsmedelsverket": "Hårt bröd fullkorn råg fibrer ca 14% Leksands Knäcke normalgräddat",
+   "per100g": {
+    "kcal": 349.4,
+    "prot": 9.1,
+    "sug": 0.0,
+    "fat": 0.27
+   }
+  },
+  {
+   "app": "Havregrynsgröt",
+   "portion": "1 portion",
+   "appPoints": 4,
+   "grams": 250,
+   "livsmedelsverket": "Havregrynsgröt fullkorn",
+   "per100g": {
+    "kcal": 65.3,
+    "prot": 2.35,
+    "sug": 0.0,
+    "fat": 0.22
+   }
+  },
+  {
+   "app": "Cornflakes",
+   "portion": "2 dl",
+   "appPoints": 3,
+   "grams": 30,
+   "livsmedelsverket": "Frukostflingor typ corn flakes majs berik",
+   "per100g": {
+    "kcal": 380.3,
+    "prot": 8.0,
+    "sug": 0.0,
+    "fat": 0.18
+   }
+  },
+  {
+   "app": "Pasta kokt",
+   "portion": "2 dl",
+   "appPoints": 5,
+   "grams": 140,
+   "livsmedelsverket": "Pasta kokt u salt",
+   "per100g": {
+    "kcal": 127.6,
+    "prot": 4.2,
+    "sug": 0.0,
+    "fat": 0.05
+   }
+  },
+  {
+   "app": "Ris kokt",
+   "portion": "2 dl",
+   "appPoints": 5,
+   "grams": 150,
+   "livsmedelsverket": "Basmatiris kokt",
+   "per100g": {
+    "kcal": 121.2,
+    "prot": 3.11,
+    "sug": 0.0,
+    "fat": 0.06
+   }
+  },
+  {
+   "app": "Banan",
+   "portion": "1 st",
+   "appPoints": 0,
+   "grams": 120,
+   "livsmedelsverket": "Banan",
+   "per100g": {
+    "kcal": 101.1,
+    "prot": 1.0,
+    "sug": 0.0,
+    "fat": 0.23
+   }
+  },
+  {
+   "app": "Äpple",
+   "portion": "1 st",
+   "appPoints": 0,
+   "grams": 150,
+   "livsmedelsverket": "Äpple m skal",
+   "per100g": {
+    "kcal": 47.9,
+    "prot": 0.0,
+    "sug": 0.0,
+    "fat": 0.0
+   }
+  },
+  {
+   "app": "Bär",
+   "portion": "1 dl",
+   "appPoints": 0,
+   "grams": 65,
+   "livsmedelsverket": "Blåbär",
+   "per100g": {
+    "kcal": 52.8,
+    "prot": 0.7,
+    "sug": 0.0,
+    "fat": 0.03
+   }
+  },
+  {
+   "app": "Grönsaker",
+   "portion": "valfri mängd",
+   "appPoints": 0,
+   "grams": 150,
+   "livsmedelsverket": "Broccoli",
+   "per100g": {
+    "kcal": 35.2,
+    "prot": 3.5,
+    "sug": 0.0,
+    "fat": 0.04
+   }
+  },
+  {
+   "app": "Tomat / gurka",
+   "portion": "valfri mängd",
+   "appPoints": 0,
+   "grams": 100,
+   "livsmedelsverket": "Tomat",
+   "per100g": {
+    "kcal": 17.5,
+    "prot": 0.81,
+    "sug": 0.0,
+    "fat": 0.02
+   }
+  },
+  {
+   "app": "Avokado",
+   "portion": "½ st",
+   "appPoints": 4,
+   "grams": 75,
+   "livsmedelsverket": "Avokado",
+   "per100g": {
+    "kcal": 197.2,
+    "prot": 1.94,
+    "sug": 0.0,
+    "fat": 3.43
+   }
+  },
+  {
+   "app": "Mandlar",
+   "portion": "20 g",
+   "appPoints": 3,
+   "grams": 20,
+   "livsmedelsverket": "Sötmandel torkad",
+   "per100g": {
+    "kcal": 609.3,
+    "prot": 20.0,
+    "sug": 0.0,
+    "fat": 4.93
+   }
+  },
+  {
+   "app": "Smör",
+   "portion": "1 tsk",
+   "appPoints": 2,
+   "grams": 5,
+   "livsmedelsverket": "Smör fett 80 %",
+   "per100g": {
+    "kcal": 728.8,
+    "prot": 0.4,
+    "sug": 0.0,
+    "fat": 54.99
+   }
+  },
+  {
+   "app": "Olivolja / rapsolja",
+   "portion": "1 msk",
+   "appPoints": 4,
+   "grams": 10,
+   "livsmedelsverket": "Rapsolja",
+   "per100g": {
+    "kcal": 884.3,
+    "prot": 0.0,
+    "sug": 0.0,
+    "fat": 7.07
+   }
+  },
+  {
+   "app": "Glass",
+   "portion": "1 kula",
+   "appPoints": 4,
+   "grams": 50,
+   "livsmedelsverket": "Gräddglass fett 12%",
+   "per100g": {
+    "kcal": 208.7,
+    "prot": 3.5,
+    "sug": 0.0,
+    "fat": 7.71
+   }
+  },
+  {
+   "app": "Semla",
+   "portion": "1 st",
+   "appPoints": 18,
+   "grams": 120,
+   "livsmedelsverket": "Semla vetebulle fylld m mandelmassa vispad grädde",
+   "per100g": {
+    "kcal": 333.1,
+    "prot": 5.38,
+    "sug": 0.0,
+    "fat": 8.56
+   }
+  }
+ ]
+}

@@ -43,6 +43,10 @@ test("Open Food Facts products: per portion when the package says so, brand adde
   const kj = offFood({ product_name_sv: "Surdegsbröd", product_name: "Sourdough", brands: "Pågen", nutriments: { energy_100g: 1046, proteins_100g: 9 } });
   assert.deepEqual([kj.name, kj.portion, kj.points], ["Surdegsbröd, Pågen", "100 g", 7]);
   assert.equal(offFood({ product_name: "Utan energi", nutriments: {} }), null);
+  const peas = offFood({ product_name: "Gröna ärtor", brands: "Findus", categories_tags: ["en:plant-based-foods", "en:frozen-vegetables"], nutriments: { "energy-kcal_100g": 80, proteins_100g: 5, sugars_100g: 5 } });
+  assert.equal(peas.points, 0, "frozen vegetables are 0 points");
+  assert.equal(offFood({ product_name: "Bananchips", categories_tags: ["en:fresh-fruits", "en:dried-fruits"], nutriments: { "energy-kcal_100g": 520 } }).points > 0, true, "dried is not");
+  assert.equal(offFood({ product_name: "Blåbär", brands: "ICA", nutriments: { "energy-kcal_100g": 50 } }).points, 0, "by name");
 });
 
 // ---------- fake services ----------

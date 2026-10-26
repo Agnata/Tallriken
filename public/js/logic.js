@@ -112,3 +112,23 @@ export function startWeight(sorted, startDate){
   if(!sorted.length) return null;
   return (startDate && sorted.find(w=>w.date>=startDate)) || sorted[0];
 }
+
+// ---------- 0-poängsmat ----------
+// Frukt, bär och grönsaker är 0 poäng, som i appens egen lista. Livsmedelsverket och Open Food Facts
+// räknar annars fram poäng ur energin (en banan blir 4 p). Namn som börjar med en frukt, ett bär eller
+// en grönsak räknas som 0 poäng, utom när de är torkade, sockrade, i sötad lag, juice, sylt,
+// tillagade med fett eller sås, eller en rätt med annat i. Potatis, majs, baljväxter, avokado och
+// oliver har poäng som förut.
+const ZERO_FIRST=new Set(("banan äpple äpplen päron apelsin apelsiner clementin clementiner mandarin mandariner kiwi mango ananas melon vattenmelon "+
+  "honungsmelon cantaloupe persika persikor nektarin nektariner plommon aprikos aprikoser körsbär vindruvor druvor grapefrukt citron lime "+
+  "jordgubbar jordgubbe hallon blåbär lingon björnbär vinbär krusbär hjortron tranbär fikon granatäpple papaya passionsfrukt physalis "+
+  "broccoli blomkål vitkål rödkål grönkål brysselkål savojkål spetskål kinakål salladskål kål spenat sallad sallat isbergssallad "+
+  "romansallad ruccola rucola gurka tomat tomater körsbärstomater cocktailtomater paprika morot morötter lök rödlök purjolök vitlök "+
+  "salladslök schalottenlök zucchini squash aubergine selleri rotselleri bladselleri stjälkselleri rödbetor rödbeta palsternacka kålrot "+
+  "rädisor rädisa sparris champinjoner svamp kantareller sockerärter haricots haricot pumpa fänkål mangold jordärtskocka kronärtskocka "+
+  "rabarber grönsaksblandning wokgrönsaker grönsaker böngroddar groddar krasse").split(" "));
+const ZERO_NOT=/torka|sockra|söt lag|sötad|sylt|juice|nektar|dricka|saft|kompott|marmelad|gelé|mos\b|chips|stekt|fräst|friter|gratin|gratäng|stuv|paj|kaka|sås|dressing|majonnäs|soppa|olja|smör|grädde|ost\b|räkor|ägg|kyckling|skinka|tonfisk|bacon|pasta|ris\b|inlagd|choklad|glass|yoghurt|pulver|chutney|nudl/;
+export function isZeroPointName(name){
+  const n=String(name||"").toLowerCase().trim();
+  return ZERO_FIRST.has(n.split(/[\s,]+/)[0]) && !ZERO_NOT.test(n);
+}
