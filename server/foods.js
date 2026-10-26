@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { calcPoints } from "../public/js/logic.js";
+import { calcPoints, isZeroPointName } from "../public/js/logic.js";
 
 // Two sources beyond the app's own food list, both searched from the food dialog:
 //  - Livsmedelsverkets livsmedelsdatabas (about 2 500 foods, open data, cite source and version).
@@ -113,6 +113,10 @@ export function offFood(p) {
   if (kcal == null && n.energy_100g != null) kcal = n.energy_100g / 4.184;
   const productName = text(p.product_name_sv) || text(p.product_name);
   if (kcal == null || !productName) return null;
+  // Fresh or frozen fruit, berries and vegetables are 0 points, as in the app's own list.
+  const cats = p.categories_tags || [];
+  const zero = isZeroPointName(productName) ||
+    (cats.some(c => /^en:(fresh|frozen)-(fruits|vegetables|berries)$/.test(c)) && !cats.some(c => /dried|juice|sweetened|jam|chips|sauce/.test(c)));
   const per100 = calcPoints(Number(kcal), Number(n.proteins_100g || 0), Number(n.sugars_100g || 0), Number(n["saturated-fat_100g"] || 0));
   const brand = String((Array.isArray(p.brands) ? p.brands[0] : String(p.brands || "").split(",")[0]) || "").trim();
   const name = String(productName).trim();
@@ -121,7 +125,8 @@ export function offFood(p) {
   const points = g > 0 && g < 1000
     ? calcPoints(kcal * g / 100, (n.proteins_100g || 0) * g / 100, (n.sugars_100g || 0) * g / 100, (n["saturated-fat_100g"] || 0) * g / 100)
     : per100;
-  return { name: brand && !name.toLowerCase().includes(brand.toLowerCase()) ? `${name}, ${brand}` : name, portion, points, code: String(p.code || "") };
+  return { name: brand && !name.toLowerCase().includes(brand.toLowerCase()) ? `${name}, ${brand}` : name, portion,
+    points: zero ? 0 : points, code: String(p.code || "") };
 }
 
 export function createFoods(config) {
@@ -134,7 +139,7 @@ export function createFoods(config) {
   async function product(code) {
     const c = productCache.get(code);
     if (c && c.expires > Date.now()) return c.p;
-    const d = await getJson(`${offUrl}/api/v2/product/${encodeURIComponent(code)}?fields=product_name,product_name_sv,brands,nutriments,serving_quantity`, 8000);
+    const d = await getJson(`${offUrl}/api/v2/product/${encodeURIComponent(code)}?fields=product_name,product_name_sv,brands,nutriments,serving_quantity,categories_tags`, 8000);
     const p = d?.product || {};
     productCache.set(code, { p, expires: Date.now() + 7 * 864e5 });
     if (productCache.size > 2000) productCache.delete(productCache.keys().next().value);
@@ -148,7 +153,7 @@ export function createFoods(config) {
   function load() {
     try {
       const data = JSON.parse(fs.readFileSync(file, "utf8"));
-      for (const f of data.foods) f.points = calcPoints(f.kcal, f.prot, f.sug, f.fat);
+      for (const f of data.foods) f.points = isZeroPointName(f.name) ? 0 : calcPoints(f.kcal, f.prot, f.sug, f.fat);
       db = data;
     } catch { db = null; }
   }
@@ -194,7 +199,7 @@ export function createFoods(config) {
       if (key.length < 2) return [];
       const hit = offCache.get(key);
       if (hit && hit.expires > Date.now()) return hit.items;
-      const fields = "code,product_name,product_name_sv,brands,nutriments,serving_quantity,countries_tags";
+      const fields = "code,product_name,product_name_sv,brands,nutriments,serving_quantity,countries_tags,categories_tags";
       let data;
       try {
         data = await getJson(`${offSearchUrl}/search?${new URLSearchParams({ q: key, page_size: "30", langs: "sv,en", fields })}`, 10_000);
