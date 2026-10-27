@@ -1,4 +1,4 @@
-import { calcPoints, actPoints, iso, today, addDays, mondayOf, isoWeek, energyBudget, sunTimes, parseUnit, blank, normalize, looksLikeDiary, trendLine, niceTicks, timeTicks, byWeek, startWeight } from "./logic.js";
+import { calcPoints, actPoints, iso, today, addDays, mondayOf, isoWeek, energyBudget, foodTags, sunTimes, parseUnit, blank, normalize, looksLikeDiary, trendLine, niceTicks, timeTicks, byWeek, startWeight } from "./logic.js";
 
 (async function(){
 "use strict";
@@ -140,15 +140,22 @@ const CAT_OF = Object.fromEntries(FOODS.map(f=>[f[0],f[3]]));
 const FISH = new Set(["Torsk","Lax","Räkor","Tonfisk i vatten","Inlagd sill","Fiskpinnar","Kaviar (tub)"]);
 const NOT_DAIRY = /grädde|crème|gräddfil|havredryck/i;
 const NOT_FRUIT = new Set(["Mandlar","Jordnötter","Russin / torkad frukt"]);
-const isDairy = n => (CAT_OF[n]===0 && !NOT_DAIRY.test(n)) || CAT_OF[n]===1;
-const isProtein = n => isDairy(n) || CAT_OF[n]===2 || CAT_OF[n]===3;
+// Vilka mål i "Bra för dig" en loggad sak räknas till. Appens egen lista har kategorier; annat
+// (Livsmedelsverket, Open Food Facts, egna matvaror) har tags från servern eller känns igen på namnet.
+function tagsOf(f){
+  if(f.tags) return f.tags;
+  const c=CAT_OF[f.name];
+  if(c===undefined) return foodTags(f.name);
+  const dairy=(c===0 && !NOT_DAIRY.test(f.name)) || c===1;
+  return {fv:c===6 && !NOT_FRUIT.has(f.name), dairy, protein:dairy||c===2||c===3, fish:FISH.has(f.name)};
+}
 function renderGoals(){
   const foods=day(cur).foods;
-  const fv=foods.filter(f=>CAT_OF[f.name]===6 && !NOT_FRUIT.has(f.name)).length;
-  const dairy=foods.filter(f=>isDairy(f.name)).length;
-  const pm=["Frukost","Lunch","Middag"].filter(m=>foods.some(f=>f.meal===m && isProtein(f.name))).length;
+  const fv=foods.filter(f=>tagsOf(f).fv).length;
+  const dairy=foods.filter(f=>tagsOf(f).dairy).length;
+  const pm=["Frukost","Lunch","Middag"].filter(m=>foods.some(f=>f.meal===m && tagsOf(f).protein)).length;
   const mon=mondayOf(cur); let fish=0;
-  for(let i=0;i<7;i++){ if(day(addDays(mon,i)).foods.some(f=>FISH.has(f.name))) fish++; }
+  for(let i=0;i<7;i++){ if(day(addDays(mon,i)).foods.some(f=>tagsOf(f).fish)) fish++; }
   const rows=[
     ["Frukt, bär och grönt",fv,5,"Portioner idag, gärna mest grönsaker"],
     ["Mejeri och ost",dairy,3,"Portioner idag, för kalcium och starkt skelett"],
@@ -327,7 +334,7 @@ function renderRemote(list, localHits){
     const s=document.createElement("span"); s.className="por"; s.textContent=f.portion; l.append(s);
     const r=document.createElement("span"); r.className="fp"+(f.points===0?" zero":""); r.textContent=f.points+" p";
     b.append(l,r);
-    b.onclick=()=>{ pendingFav={name:f.name,portion:f.portion,points:f.points,src}; openQty({name:f.name,portion:f.portion,base:f.points,qty:1},null); };
+    b.onclick=()=>{ pendingFav={name:f.name,portion:f.portion,points:f.points,src,tags:f.tags}; openQty({name:f.name,portion:f.portion,base:f.points,qty:1},null); };
     list.append(b);
   };
   if(remote.lv.length){ head("Livsmedelsverket, per 100 g"); remote.lv.forEach(f=>row(f,"lv")); }
@@ -340,7 +347,7 @@ function renderRemote(list, localHits){
 // Lägger det valda från Livsmedelsverket eller Open Food Facts under ★ Mina.
 function rememberFav(name){
   if(!pendingFav || pendingFav.name!==name) return;
-  if(!S.favs.some(f=>f.name===name)) S.favs.unshift({name,portion:pendingFav.portion,points:pendingFav.points,src:pendingFav.src});
+  if(!S.favs.some(f=>f.name===name)) S.favs.unshift({name,portion:pendingFav.portion,points:pendingFav.points,src:pendingFav.src,tags:pendingFav.tags});
   pendingFav=null;
 }
 // ---------- Mängd ----------
@@ -382,10 +389,11 @@ function qNudge(dir){
   qS.qty=qS.u? nv/qS.u.amt : nv; renderQty(true);
 }
 function addFood(name,portion,base,qty){
+  const tags=(pendingFav && pendingFav.name===name && pendingFav.tags) || (S.favs.find(f=>f.name===name)||{}).tags;
   rememberFav(name);
   qty=qty||1; const points=Math.round(base*qty);
   const d=ensureDay(cur); const wasEmpty=!logged(cur);
-  d.foods.push({id:uid(),name,portion,base,qty,points,meal:mealTarget});
+  d.foods.push(Object.assign({id:uid(),name,portion,base,qty,points,meal:mealTarget}, tags? {tags} : {}));
   save(); if($("#qtyDlg").open) $("#qtyDlg").close(); if($("#foodDlg").open) $("#foodDlg").close(); renderAll();
   toast(points===0? name+" är 0 poäng. Härligt!" : name+" tillagt, "+points+" p");
   if(wasEmpty) checkBadges();
@@ -629,8 +637,8 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 function weekStats(mon){
   const ds=[...Array(7)].map((_,i)=>addDays(mon,i)).filter(d=>d<=today());
   const ld=ds.filter(logged);
-  const fvOf=d=>day(d).foods.filter(f=>CAT_OF[f.name]===6&&!NOT_FRUIT.has(f.name)).length;
-  const prOf=d=>["Frukost","Lunch","Middag"].filter(m=>day(d).foods.some(f=>f.meal===m&&isProtein(f.name))).length;
+  const fvOf=d=>day(d).foods.filter(f=>tagsOf(f).fv).length;
+  const prOf=d=>["Frukost","Lunch","Middag"].filter(m=>day(d).foods.some(f=>f.meal===m&&tagsOf(f).protein)).length;
   const w=sortedW(); const before=w.filter(x=>x.date<mon).pop(); const inW=w.filter(x=>x.date>=mon&&x.date<=addDays(mon,6)).pop();
   const moods=ds.map(d=>day(d).mood).filter(Boolean);
   const avg=k=>{ const v=moods.map(m=>m[k]).filter(x=>x); return v.length? v.reduce((a,b)=>a+b,0)/v.length : null; };
@@ -642,7 +650,7 @@ function weekStats(mon){
     strength:ds.reduce((a,d)=>a+day(d).acts.filter(isStrength).length,0),
     gym:ds.reduce((a,d)=>a+day(d).acts.filter(isGym).length,0),
     cardio:ds.reduce((a,d)=>a+day(d).acts.filter(isCardio).reduce((x,y)=>x+y.min,0),0),
-    fish:ds.filter(d=>day(d).foods.some(f=>FISH.has(f.name))).length,
+    fish:ds.filter(d=>day(d).foods.some(f=>tagsOf(f).fish)).length,
     fv: ld.length? ld.reduce((a,d)=>a+fvOf(d),0)/ld.length : 0,
     prot: ld.length? ld.reduce((a,d)=>a+prOf(d),0)/ld.length : 0,
     wChange: before&&inW? inW.kg-before.kg : null,
