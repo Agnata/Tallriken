@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { calcPoints, isZeroPointName } from "../public/js/logic.js";
+import { calcPoints, isZeroPointName, foodTags } from "../public/js/logic.js";
 
 // Two sources beyond the app's own food list, both searched from the food dialog:
 //  - Livsmedelsverkets livsmedelsdatabas (about 2 500 foods, open data, cite source and version).
@@ -126,7 +126,7 @@ export function offFood(p) {
     ? calcPoints(kcal * g / 100, (n.proteins_100g || 0) * g / 100, (n.sugars_100g || 0) * g / 100, (n["saturated-fat_100g"] || 0) * g / 100)
     : per100;
   return { name: brand && !name.toLowerCase().includes(brand.toLowerCase()) ? `${name}, ${brand}` : name, portion,
-    points: zero ? 0 : points, code: String(p.code || "") };
+    points: zero ? 0 : points, code: String(p.code || ""), tags: foodTags(productName, cats) };
 }
 
 export function createFoods(config) {
@@ -191,7 +191,7 @@ export function createFoods(config) {
 
     search(q) {
       if (!db) return [];
-      return searchNames(db.foods, q, 30).map(f => ({ name: f.name, portion: "100 g", points: f.points }));
+      return searchNames(db.foods, q, 30).map(f => ({ name: f.name, portion: "100 g", points: f.points, tags: foodTags(f.name) }));
     },
 
     async brands(q) {

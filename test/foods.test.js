@@ -11,6 +11,7 @@ import { hashPassword } from "../server/auth.js";
 import { createMailer } from "../server/mailer.js";
 import { pickNutrients, wordMatches, searchNames, offFood, fetchLivsmedel } from "../server/foods.js";
 
+const noTags = ({ tags, ...rest }) => rest;
 const nut = (kcal, prot, sug, fat) => [
   { namn: "Energi (kJ)", forkortning: "ENERC", euroFIRkod: "ENERC", varde: Math.round(kcal * 4.184), enhet: "kJ" },
   { namn: "Energi (kcal)", forkortning: "ENERC", euroFIRkod: "ENERC", varde: kcal, enhet: "kcal" },
@@ -39,7 +40,10 @@ test("Swedish compounds match names written the other way round", () => {
 test("Open Food Facts products: per portion when the package says so, brand added", () => {
   const cf = offFood({ code: "5050083", product_name: "Corn Flakes", brands: "Kellogg's,Kellogg", serving_quantity: 30,
     nutriments: { "energy-kcal_100g": 378, proteins_100g: 7, sugars_100g: 8, "saturated-fat_100g": 0.2 } });
-  assert.deepEqual(cf, { name: "Corn Flakes, Kellogg's", portion: "1 portion (30 g)", points: 4, code: "5050083" });
+  assert.deepEqual(noTags(cf), { name: "Corn Flakes, Kellogg's", portion: "1 portion (30 g)", points: 4, code: "5050083" });
+  assert.deepEqual(cf.tags, { fv: false, dairy: false, protein: false, fish: false });
+  assert.deepEqual(offFood({ product_name: "Isolate Vanilla", categories_tags: ["en:protein-powders"], nutriments: { "energy-kcal_100g": 370 } }).tags,
+    { fv: false, dairy: false, protein: true, fish: false }, "protein powder by category");
   const kj = offFood({ product_name_sv: "Surdegsbröd", product_name: "Sourdough", brands: "Pågen", nutriments: { energy_100g: 1046, proteins_100g: 9 } });
   assert.deepEqual([kj.name, kj.portion, kj.points], ["Surdegsbröd, Pågen", "100 g", 7]);
   assert.equal(offFood({ product_name: "Utan energi", nutriments: {} }), null);
@@ -131,7 +135,8 @@ test("before the list is fetched, search answers empty; the scheduler fetches it
 
 test("search Livsmedelsverket: points per 100 g, compounds, needs login", async () => {
   const r = await (await get("/api/foods/search?q=surdegsbröd")).json();
-  assert.deepEqual(r.items, [{ name: "Bröd surdeg vete", portion: "100 g", points: 7 }]);
+  assert.deepEqual(r.items.map(noTags), [{ name: "Bröd surdeg vete", portion: "100 g", points: 7 }]);
+  assert.equal((await (await get("/api/foods/search?q=lax")).json()).items[0].tags.fish, true);
   assert.equal(r.version, "2025-06-10");
   assert.equal((await (await get("/api/foods/search?q=lax")).json()).items[0].name, "Lax odlad");
   assert.equal((await fetch(base + "/api/foods/search?q=lax")).status, 401);
@@ -139,7 +144,7 @@ test("search Livsmedelsverket: points per 100 g, compounds, needs login", async 
 
 test("branded products from Open Food Facts: Swedish first, nutrients filled in, duplicates and products without energy dropped", async () => {
   const r = await (await get("/api/foods/brands?q=Corn%20flakes")).json();
-  assert.deepEqual(r.items, [
+  assert.deepEqual(r.items.map(noTags), [
     { name: "Corn Flakes, Kellogg's", portion: "1 portion (30 g)", points: 4, code: "1" },
     { name: "Frosties, Kellogg's", portion: "1 portion (30 g)", points: 5, code: "4" },
     { name: "Corn Flakes, Nestlé", portion: "100 g", points: 12, code: "9" },

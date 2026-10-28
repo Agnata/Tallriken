@@ -101,3 +101,18 @@ test("weekly means for long periods, and the start weight", () => {
   assert.equal(L.startWeight(pts, "2027-01-01").date, "2026-10-19", "a start date after every weighing falls back to the first");
   assert.equal(L.startWeight([], "2026-10-20"), null);
 });
+
+test("'Bra för dig' recognises foods from Livsmedelsverket, Open Food Facts and own entries by name", () => {
+  const t = n => Object.entries(L.foodTags(n)).filter(([, v]) => v).map(([k]) => k).join(",");
+  assert.equal(t("Grekisk yoghurt 6%"), "dairy,protein");
+  assert.equal(t("Kiwi"), "fv");
+  assert.equal(t("Proteinpulver choklad"), "protein");
+  assert.equal(t("Whey 80 vanilj"), "protein");
+  assert.equal(t("Lax odlad"), "protein,fish");
+  assert.equal(t("Hushållsost 26%"), "dairy,protein");
+  assert.equal(t("Ägg konventionellt rått"), "protein");
+  for (const n of ["Mjölkchoklad", "Gräddfil", "Havredryck", "Bröd surdeg vete", "Fusilli", "Färskpotatis rå", "Köttbuljong konc",
+    "Pasta Äggnudlar", "Gröna bönor", "Jordnötter", "Corn Flakes"]) assert.equal(t(n), "", n);
+  assert.equal(L.foodTags("Isolate", ["en:protein-powders"]).protein, true, "by Open Food Facts category");
+  assert.equal(L.foodTags("Skyr vanilj", ["en:dairies", "en:yogurts"]).dairy, true);
+});

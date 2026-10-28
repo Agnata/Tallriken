@@ -132,3 +132,24 @@ export function isZeroPointName(name){
   const n=String(name||"").toLowerCase().trim();
   return ZERO_FIRST.has(n.split(/[\s,]+/)[0]) && !ZERO_NOT.test(n);
 }
+
+// ---------- "Bra för dig" ----------
+// Vilka kostrådsmål ett livsmedel räknas till: fv (frukt, bär och grönt), dairy (mejeri och ost),
+// protein och fish. Appens egen lista har kategorier; livsmedel från Livsmedelsverket, Open Food
+// Facts och egna matvaror känns igen på namnet och, för Open Food Facts, på produktkategorierna.
+const DAIRY_RE=/yoghurt|yogurt|kvarg|skyr|keso|kesella|cottage|filmjölk|(^|\s)fil(\s|,|$)|mjölk|kefir|ymer|(^|[^r])ost(\s|,|$|ar)|mozzarella|feta|halloumi|parmesan|brie|camembert|cheddar|grevé|präst|herrgård|västerbotten|färskost/;
+const NOT_DAIRY_RE=/grädde|crème|creme|gräddfil|havre|soja|mandel|kokos|risdryck|choklad|glass|smör|margarin|bregott|smörgås|pizza|paj|gratäng|sås|soppa|kaka|bulle|bröd|kex|mos\b|bagel|hamburgare|enchilada|wrap|tortilla|buljong/;
+const FISH_RE=/(^|\s)lax|torsk|(^|\s)sej|kolja|(?<!u)sill|strömming|makrill|tonfisk|räkor|fisk|kaviar|abborre|gös|gädda|rödspätta|hälleflundra|röding|öring|musslor|kräftor|krabba|hummer|ansjovis|sardin|salmon|tuna|cod\b/;
+const PROTEIN_RE=/protein|whey|kasein|kyckling|kalkon|kött|färs(?!k)|biff|fläsk|nötkött|(^|\s)nöt(\s|$)|lamm|vilt|älg|skinka|kassler|bacon|korv|ägg|tofu|tempeh|bönor|linser|kikärt|quorn|sojafärs|halloumi|chicken|beef|pork/;
+const CAT_TAGS={dairy:/^en:(dairies|yogurts|cheeses|milks|fermented-milk-products|quarks|skyrs|cottage-cheeses)$/, fish:/^en:(fishes|seafood|fish-and-seafood|fatty-fishes|canned-fishes|smoked-fishes)$/,
+  protein:/^en:(meats|poultry|eggs|legumes|tofu|protein-powders|whey-proteins|meat-alternatives|bodybuilding-supplements)$/};
+export function foodTags(name, categories=[]){
+  const n=String(name||"").toLowerCase();
+  const cat=re=>categories.some(c=>re.test(c));
+  const dairy=(DAIRY_RE.test(n) && !NOT_DAIRY_RE.test(n)) || (cat(CAT_TAGS.dairy) && !NOT_DAIRY_RE.test(n));
+  const soup=/buljong|fond\b|nudlar|gröna bönor|haricots/.test(n);
+  const fish=!soup && (FISH_RE.test(n) || cat(CAT_TAGS.fish));
+  const protein=!soup && (dairy || fish || PROTEIN_RE.test(n) || cat(CAT_TAGS.protein));
+  const fv=isZeroPointName(n) || (cat(/^en:(fresh|frozen)-(fruits|vegetables|berries)$/) && !cat(/dried|juice|sweetened|jam|chips|sauce/));
+  return {fv,dairy,protein,fish};
+}
