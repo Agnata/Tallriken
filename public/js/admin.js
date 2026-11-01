@@ -136,6 +136,9 @@ async function loadSystem() {
   $("checks").innerHTML = Object.entries(CHECKS).map(([k, label]) =>
     `<li class="${c[k].status === "off" ? "off" : c[k].ok ? "" : "bad"}"><b>${label}</b><span>${esc(detail[k] || "")}</span></li>`).join("") +
     `<li class="${s.mail ? "" : "off"}"><b>E-post</b><span>${s.mail ? "SMTP inställd" : "Inte inställd (SMTP_HOST)"}</span></li>` +
+    (s.withings ? `<li class="${s.withings.missing.length ? "bad" : s.withings.enabled ? "" : "off"}"><b>Withings</b><span>${
+      s.withings.missing.length ? `Avstängt: ${esc(s.withings.missing.join(" och "))} saknar värde i /etc/tallriken.env`
+      : s.withings.enabled ? `På, ${s.withings.connected} ${s.withings.connected === 1 ? "våg kopplad" : "vågar kopplade"}` : "Inte inställt (WITHINGS_CLIENT_ID och _SECRET)"}</span></li>` : "") +
     (s.foods ? `<li class="${s.foods.error ? "bad" : s.foods.count ? "" : "off"}"><b>Livsmedel</b><span>${s.foods.importing ? "Hämtar från Livsmedelsverket …"
       : s.foods.count ? `${s.foods.count} från Livsmedelsverket, hämtade ${fmtTime(s.foods.fetched)}` : "Inte hämtade än"}${s.foods.error ? `. Fel: ${esc(s.foods.error)}` : ""}
       <button type="button" class="linkbtn" id="foodsBtn" style="font-size:13px">Hämta nu</button></span></li>` : "");

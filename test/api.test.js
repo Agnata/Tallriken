@@ -7,6 +7,7 @@ import { createMailer } from "../server/mailer.js";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "tr-test-"));
 const config = { dbPath: ":memory:", production: false, origin: "", sessionDays: 1, baseUrl: "https://tallriken.test",
@@ -252,6 +253,7 @@ test("health, backups and admin system view", async () => {
   assert.deepEqual([sys.backups[0].app, sys.backups[0].users, sys.backups[0].documents], ["tallriken", 2, 2]);
   assert.match(sys.backups[0].name, /^tallriken-\d{8}-\d{6}$/);
   assert.equal(sys.offsite, null);
+  assert.deepEqual(sys.withings, { enabled: false, missing: [], connected: 0 });
   assert.ok(!fs.readdirSync(config.backupDir).some(n => n.endsWith(".partial")));
 
   h = await call("/api/health");
@@ -323,6 +325,15 @@ test("scheduler: backup at night, Swedish time", async () => {
 test("logout ends the session", async () => {
   assert.equal((await call("/api/logout", { method: "POST", body: {} })).status, 204);
   assert.equal((await call("/api/data")).status, 401);
+});
+
+test("only one Withings key: off, and the missing one is named", async () => {
+  const run = env => JSON.parse(execFileSync(process.execPath, ["--input-type=module", "-e",
+    "const { config } = await import('./server/config.js'); console.log(JSON.stringify(config.withings))"],
+    { env: { PATH: process.env.PATH, ...env }, cwd: new URL("..", import.meta.url).pathname }).toString());
+  assert.deepEqual([run({ WITHINGS_CLIENT_ID: "abc" }).enabled, run({ WITHINGS_CLIENT_ID: "abc" }).missing], [false, ["WITHINGS_CLIENT_SECRET"]]);
+  assert.deepEqual(run({ WITHINGS_CLIENT_ID: "abc", WITHINGS_CLIENT_SECRET: "x" }).missing, []);
+  assert.deepEqual(run({}).missing, [], "neither set: simply off, nothing missing");
 });
 
 test("Withings is off without WITHINGS_CLIENT_ID and _SECRET", async () => {

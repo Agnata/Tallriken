@@ -30,6 +30,9 @@ export const config = {
   // Withings scale (developer.withings.com). Off unless both id and secret are set.
   withings: {
     enabled: !!(env.WITHINGS_CLIENT_ID && env.WITHINGS_CLIENT_SECRET),
+    // Names of the keys that are empty when only one of the two is set (shown in the log and Admin).
+    missing: env.WITHINGS_CLIENT_ID || env.WITHINGS_CLIENT_SECRET
+      ? ["WITHINGS_CLIENT_ID", "WITHINGS_CLIENT_SECRET"].filter(k => !env[k]) : [],
     clientId: env.WITHINGS_CLIENT_ID || "",
     clientSecret: env.WITHINGS_CLIENT_SECRET || "",
     authUrl: env.WITHINGS_AUTH_URL || "https://account.withings.com",

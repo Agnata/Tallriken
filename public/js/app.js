@@ -1,4 +1,4 @@
-import { calcPoints, actPoints, iso, today, addDays, mondayOf, isoWeek, energyBudget, foodTags, sunTimes, parseUnit, blank, normalize, looksLikeDiary, trendLine, niceTicks, timeTicks, byWeek, startWeight } from "./logic.js";
+import { calcPoints, actPoints, iso, today, addDays, mondayOf, isoWeek, energyBudget, foodTags, weekBuffer, sunTimes, parseUnit, blank, normalize, looksLikeDiary, trendLine, niceTicks, timeTicks, byWeek, startWeight } from "./logic.js";
 
 (async function(){
 "use strict";
@@ -19,7 +19,7 @@ const FOODS = [
   ["Fetaost","30 g",3,1],["Halloumi","50 g",6,1],["Mozzarella","50 g",5,1],["Brie / camembert","30 g",4,1],["Parmesan, riven","1 msk",1,1],
   ["Färskost","1 msk",2,1],["Färskost lätt","1 msk",1,1],
   // Kött & fisk
-  ["Kycklingfilé","150 g",3,2],["Kycklingfärs","125 g",3,2],["Fläskfilé","150 g",3,2],["Köttfärs 10 %","125 g",6,2],["Nötfärs 20 %","125 g",10,2],["Köttbullar","10 st",11,2],
+  ["Kycklingfilé","150 g",3,2],["Kycklingfärs","125 g",3,2],["Fläskfilé","150 g",3,2],["Köttfärs 10 %","125 g",8,2],["Nötfärs 20 %","125 g",10,2],["Köttbullar","10 st",7,2],
   ["Falukorv","100 g",8,2],["Prinskorv","5 st",7,2],["Bacon","2 skivor",3,2],["Skinka / kalkonpålägg","2 skivor",0,2],["Leverpastej","1 msk",2,2],
   ["Torsk","150 g",2,2],["Lax","125 g",6,2],["Räkor","100 g",1,2],["Tonfisk i vatten","1 burk",1,2],["Inlagd sill","50 g",4,2],["Fiskpinnar","4 st",5,2],["Kaviar (tub)","1 msk",2,2],
   // Vegetariskt
@@ -35,15 +35,15 @@ const FOODS = [
   ["Avokado","½ st",4,6],["Russin / torkad frukt","1 msk",1,6],["Mandlar","20 g",3,6],["Jordnötter","20 g",4,6],
   // Fett & såser
   ["Smör","1 tsk",2,7],["Bregott","1 tsk",2,7],["Lätt margarin 40 %","1 tsk",1,7],["Olivolja / rapsolja","1 msk",4,7],
-  ["Majonnäs","1 msk",3,7],["Majonnäs lätt","1 msk",1,7],["Bearnaisesås","2 msk",7,7],["Ketchup","1 msk",1,7],["Sylt","1 msk",2,7],["Honung","1 tsk",1,7],["Socker","1 tsk",1,7],
+  ["Majonnäs","1 msk",3,7],["Majonnäs lätt","1 msk",1,7],["Bearnaisesås","2 msk",5,7],["Ketchup","1 msk",1,7],["Sylt","1 msk",2,7],["Honung","1 tsk",1,7],["Socker","1 tsk",1,7],
   // Fika & godis
-  ["Kanelbulle","1 st",8,8],["Chokladboll","1 st",8,8],["Kladdkaka","1 bit",14,8],["Semla","1 st",18,8],["Småkaka","1 st",3,8],["Pannkakor","2 st",10,8],
-  ["Mörk choklad","25 g",4,8],["Mjölkchoklad","25 g",5,8],["Praliner","2 st",4,8],["Lösgodis","100 g",19,8],["Glass","1 kula",4,8],["Chips","25 g",4,8],["Proteinbar","1 st",6,8],
+  ["Kanelbulle","1 st",8,8],["Chokladboll","1 st",8,8],["Kladdkaka","1 bit",14,8],["Semla","1 st",14,8],["Småkaka","1 st",3,8],["Pannkakor","2 st",8,8],
+  ["Mörk choklad","25 g",6,8],["Mjölkchoklad","25 g",5,8],["Praliner","2 st",4,8],["Lösgodis","100 g",19,8],["Glass","1 kula",4,8],["Chips","25 g",4,8],["Proteinbar","1 st",6,8],
   // Dryck
   ["Kaffe / te utan mjölk","1 kopp",0,9],["Kaffe med mjölk","1 kopp",1,9],["Lightläsk","33 cl",0,9],["Läsk","33 cl",5,9],["Juice","2 dl",5,9],["Saft, spädd","2 dl",3,9],
   ["Vin","1 glas",4,9],["Öl","33 cl",5,9],["Sprit","4 cl",3,9],
   // Rätter
-  ["Ärtsoppa","3 dl",6,10],["Sushi","10 bitar",14,10],["Pizza","1 st",28,10],["Hamburgare","1 st",15,10],["Pyttipanna","1 portion",12,10]
+  ["Ärtsoppa","3 dl",6,10],["Sushi","10 bitar",14,10],["Pizza","1 st",35,10],["Hamburgare","1 st",15,10],["Pyttipanna","1 portion",12,10]
 ];
 let foodCat = -1;
 
@@ -120,12 +120,14 @@ const eatenOn = d => day(d).foods.reduce((a,f)=>a+f.points,0);
 const actOn = d => day(d).acts.reduce((a,x)=>a+x.points,0);
 const allowedOn = d => S.settings.daily + actOn(d);
 const overOn = d => Math.max(0, eatenOn(d) - allowedOn(d));
-function weekLeft(d){
-  const m=mondayOf(d); let used=0;
-  for(let i=0;i<7;i++){ const x=addDays(m,i); if(x>d) break; used+=overOn(x); }
-  return S.settings.weekly - used;
-}
 const logged = d => day(d).foods.length>0;
+// Veckobufferten: grundbufferten plus poäng som blev över på tidigare dagar i veckan, minus det man gått över.
+function weekInfo(d){
+  const m=mondayOf(d);
+  const week=[...Array(7)].map((_,i)=>addDays(m,i)).map(x=>({date:x, eaten:eatenOn(x), allowed:allowedOn(x), logged:logged(x)}));
+  return weekBuffer(S.settings.weekly, week, d, today());
+}
+const weekLeft = d => weekInfo(d).left;
 function streak(){
   let n=0, d=today();
   if(!logged(d)) d=addDays(d,-1);
@@ -191,7 +193,7 @@ function dayName(d){
 function renderToday(){
   $("#dayLabel").textContent = dayName(cur);
   $("#nextDay").disabled = cur>=today();
-  const eaten=eatenOn(cur), act=actOn(cur), allowed=allowedOn(cur), left=allowed-eaten, wk=weekLeft(cur);
+  const eaten=eatenOn(cur), act=actOn(cur), allowed=allowedOn(cur), left=allowed-eaten, wi=weekInfo(cur), wk=wi.left;
   const C=2*Math.PI*78;
   const foodFrac=Math.min(1, eaten/allowed);
   const extraFrac=Math.min(1-foodFrac, Math.max(0, eaten-allowed)/Math.max(1,S.settings.weekly));
@@ -206,6 +208,7 @@ function renderToday(){
   if(left>=0){ big.textContent=left; big.classList.remove("over"); $("#leftLabel").textContent = cur===today()?"poäng kvar idag":"poäng kvar"; }
   else { big.textContent=-left; big.classList.add("over"); $("#leftLabel").textContent="från veckobufferten"; }
   $("#sEaten").textContent=eaten; $("#sAct").textContent="+"+act; $("#sWeek").textContent=wk;
+  $("#sSaved").textContent= wi.saved? " (+"+wi.saved+" sparat)" : "";
   $("#cheer").textContent = cheer(eaten,allowed,left,wk);
   renderGoals();
 
@@ -646,6 +649,8 @@ function weekStats(mon){
     days:ds.length, logged:ld.length,
     within:ld.filter(d=>eatenOn(d)<=allowedOn(d)).length,
     used:ds.reduce((a,d)=>a+overOn(d),0),
+    // Hela veckans sparade poäng (alla avslutade dagar), inte bara fram till sista dagen.
+    saved:weekBuffer(S.settings.weekly, [...Array(7)].map((_,i)=>addDays(mon,i)).map(x=>({date:x, eaten:eatenOn(x), allowed:allowedOn(x), logged:logged(x)})), addDays(mon,7), today()).saved,
     min:ds.reduce((a,d)=>a+day(d).acts.reduce((x,y)=>x+y.min,0),0),
     strength:ds.reduce((a,d)=>a+day(d).acts.filter(isStrength).length,0),
     gym:ds.reduce((a,d)=>a+day(d).acts.filter(isGym).length,0),
@@ -663,7 +668,8 @@ function winsOf(s){
   const w=[];
   if(s.logged>=5) w.push("Du loggade "+s.logged+" av "+s.days+" dagar."); else if(s.logged>0) w.push("Du loggade "+s.logged+" dag"+(s.logged>1?"ar":"")+".");
   if(s.within>0) w.push(s.within+" dag"+(s.within>1?"ar":"")+" inom dina poäng.");
-  if(s.logged>0 && s.used<=S.settings.weekly) w.push("Du höll dig inom veckobufferten.");
+  if(s.logged>0 && s.used<=S.settings.weekly+s.saved) w.push("Du höll dig inom veckobufferten.");
+  if(s.saved>0) w.push(s.saved+" dagspoäng blev över och sparades i veckobufferten.");
   if(s.min>=150) w.push(s.min+" aktiva minuter, över rekommenderade 150!"); else if(s.min>0) w.push(s.min+" aktiva minuter.");
   if(s.gym>=gymGoal()) w.push(s.gym+" gympass"+(s.gym>gymGoal()?", mer än målet!":", målet nått!")); else if(s.gym>0) w.push(s.gym+" gympass.");
   if(s.strength>s.gym) w.push((s.strength-s.gym)+" hemmapass.");
@@ -684,7 +690,7 @@ function suggestionsOf(s){
   if(s.fish<2) o.push("Fisk till middag två gånger");
   if(s.fv<4) o.push("Fem portioner frukt och grönt om dagen");
   if(s.min<150) o.push("150 minuters rörelse, ungefär 20 minuter om dagen");
-  if(s.used>S.settings.weekly) o.push("Planera veckans utemiddag och spara poäng innan");
+  if(s.used>S.settings.weekly+s.saved) o.push("Planera veckans utemiddag och spara poäng innan");
   if(s.sleep!=null && s.sleep<3) o.push("Ladda för sömnen: samma läggtid varje kväll");
   if(!o.length) o.push("Fortsätt precis som förra veckan","Prova ett nytt grönsaksrecept","Lägg till en extra promenad");
   return o.slice(0,4);

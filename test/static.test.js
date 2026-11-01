@@ -35,3 +35,16 @@ test("every #id the app looks up exists in app.html", () => {
   const missing = [...js.matchAll(/\$\("#([A-Za-z]\w*)"\)/g)].map(m => m[1]).filter(id => !ids.has(id) && !dynamic.has(id));
   assert.deepEqual([...new Set(missing)], []);
 });
+
+test("every name a page script imports from another script is exported there", async () => {
+  const dir = path.join(PUBLIC, "js");
+  for (const file of fs.readdirSync(dir).filter(f => f.endsWith(".js"))) {
+    const src = fs.readFileSync(path.join(dir, file), "utf8");
+    for (const [, names, from] of src.matchAll(/import\s*\{([^}]+)\}\s*from\s*"\.\/([^"]+)"/g)) {
+      const target = fs.readFileSync(path.join(dir, from), "utf8");
+      for (const name of names.split(",").map(n => n.trim()).filter(Boolean)) {
+        assert.match(target, new RegExp(`export\\s+(async\\s+)?(const|function|let)\\s+${name}\\b`), `${file} imports ${name} from ${from}, which does not export it`);
+      }
+    }
+  }
+});

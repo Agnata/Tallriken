@@ -117,6 +117,8 @@ export function adminRouter(db, auth, mailer, config, twoFactor, foods = null) {
       offsite: config.offsiteTarget ? offsiteStatus(config.backupDir) || {} : null,
       mail: mailer.enabled,
       foods: foods?.status() ?? null,
+      withings: { enabled: !!config.withings?.enabled, missing: config.withings?.missing || [],
+        connected: db.prepare("SELECT COUNT(*) AS n FROM withings").get().n },
     });
   });
 
