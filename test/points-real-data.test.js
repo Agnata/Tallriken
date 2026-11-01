@@ -11,12 +11,10 @@ const points = it => {
   const k = it.grams / 100, n = it.per100g;
   return calcPoints(n.kcal * k, n.prot * k, n.sug * k, n.fat * k);
 };
-// Där appens lista och näringsvärdena skiljer mer än 1 poäng. Listan är handsatt i artefakten;
-// här är det listan som avviker, inte uträkningen.
-const KNOWN = {
-  "Köttfärs 10 %": "listan 6 p, 125 g stekt nötfärs 10 % ger 8 p",
-  "Semla": "listan 18 p, en semla på 120 g ger 14 p",
-};
+// Poster där appens lista medvetet avviker mer än 1 poäng från näringsvärdena. Tom sedan
+// listan rättades efter Livsmedelsverket (köttfärs, köttbullar, semla, pannkakor, bearnaisesås,
+// mörk choklad, pizza).
+const KNOWN = {};
 
 test("fruit, berries and vegetables from Livsmedelsverket are 0 points, as in the app's list", () => {
   for (const it of items.filter(i => i.appPoints === 0)) assert.equal(points(it), 0, it.livsmedelsverket);
@@ -32,12 +30,6 @@ test("other foods: Livsmedelsverket's values give the app's points within 1 poin
   assert.ok(Math.abs(diffs.reduce((a, b) => a + b, 0) / diffs.length) < 0.5, "no systematic bias");
 });
 
-test("the known differences are still there (update KNOWN if the list changes)", () => {
-  for (const name of Object.keys(KNOWN)) {
-    const it = items.find(i => i.app === name);
-    assert.ok(Math.abs(points(it) - it.appPoints) > 1, `${name}: ${KNOWN[name]}`);
-  }
-});
 
 test("sweetened, dried, juice and cooked-with-fat stay with points", () => {
   for (const n of ["Banan torkad", "Blåbärssylt", "Apelsinjuice färskpressad", "Hallon sockrade frysta", "Spenat fräst",

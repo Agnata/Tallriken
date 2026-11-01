@@ -1,3 +1,5 @@
+export const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
 // fetch wrapper for the JSON API; throws Error with the server's message.
 export async function api(path, { method = "GET", body } = {}) {
   const res = await fetch(path, {

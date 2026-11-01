@@ -143,6 +143,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const mailer = createMailer(defaultConfig.mail);
   const app = createApp(defaultConfig, db, mailer);
   if (process.env.SCHEDULER !== "false") startScheduler(db, defaultConfig, app.locals.withings, app.locals.foods);
+  if (defaultConfig.withings.missing.length) {
+    console.warn(`Withings är avstängt: ${defaultConfig.withings.missing.join(" och ")} saknar värde i miljöfilen. Båda nycklarna behövs.`);
+  }
   app.listen(defaultConfig.port, defaultConfig.host, () =>
     console.log(`Tallriken lyssnar på http://${defaultConfig.host}:${defaultConfig.port}` +
       (defaultConfig.withings.enabled ? " (Withings på)" : "")));

@@ -19,7 +19,7 @@ const FOODS = [
   ["Fetaost","30 g",3,1],["Halloumi","50 g",6,1],["Mozzarella","50 g",5,1],["Brie / camembert","30 g",4,1],["Parmesan, riven","1 msk",1,1],
   ["Färskost","1 msk",2,1],["Färskost lätt","1 msk",1,1],
   // Kött & fisk
-  ["Kycklingfilé","150 g",3,2],["Kycklingfärs","125 g",3,2],["Fläskfilé","150 g",3,2],["Köttfärs 10 %","125 g",6,2],["Nötfärs 20 %","125 g",10,2],["Köttbullar","10 st",11,2],
+  ["Kycklingfilé","150 g",3,2],["Kycklingfärs","125 g",3,2],["Fläskfilé","150 g",3,2],["Köttfärs 10 %","125 g",8,2],["Nötfärs 20 %","125 g",10,2],["Köttbullar","10 st",7,2],
   ["Falukorv","100 g",8,2],["Prinskorv","5 st",7,2],["Bacon","2 skivor",3,2],["Skinka / kalkonpålägg","2 skivor",0,2],["Leverpastej","1 msk",2,2],
   ["Torsk","150 g",2,2],["Lax","125 g",6,2],["Räkor","100 g",1,2],["Tonfisk i vatten","1 burk",1,2],["Inlagd sill","50 g",4,2],["Fiskpinnar","4 st",5,2],["Kaviar (tub)","1 msk",2,2],
   // Vegetariskt
@@ -35,15 +35,15 @@ const FOODS = [
   ["Avokado","½ st",4,6],["Russin / torkad frukt","1 msk",1,6],["Mandlar","20 g",3,6],["Jordnötter","20 g",4,6],
   // Fett & såser
   ["Smör","1 tsk",2,7],["Bregott","1 tsk",2,7],["Lätt margarin 40 %","1 tsk",1,7],["Olivolja / rapsolja","1 msk",4,7],
-  ["Majonnäs","1 msk",3,7],["Majonnäs lätt","1 msk",1,7],["Bearnaisesås","2 msk",7,7],["Ketchup","1 msk",1,7],["Sylt","1 msk",2,7],["Honung","1 tsk",1,7],["Socker","1 tsk",1,7],
+  ["Majonnäs","1 msk",3,7],["Majonnäs lätt","1 msk",1,7],["Bearnaisesås","2 msk",5,7],["Ketchup","1 msk",1,7],["Sylt","1 msk",2,7],["Honung","1 tsk",1,7],["Socker","1 tsk",1,7],
   // Fika & godis
-  ["Kanelbulle","1 st",8,8],["Chokladboll","1 st",8,8],["Kladdkaka","1 bit",14,8],["Semla","1 st",18,8],["Småkaka","1 st",3,8],["Pannkakor","2 st",10,8],
-  ["Mörk choklad","25 g",4,8],["Mjölkchoklad","25 g",5,8],["Praliner","2 st",4,8],["Lösgodis","100 g",19,8],["Glass","1 kula",4,8],["Chips","25 g",4,8],["Proteinbar","1 st",6,8],
+  ["Kanelbulle","1 st",8,8],["Chokladboll","1 st",8,8],["Kladdkaka","1 bit",14,8],["Semla","1 st",14,8],["Småkaka","1 st",3,8],["Pannkakor","2 st",8,8],
+  ["Mörk choklad","25 g",6,8],["Mjölkchoklad","25 g",5,8],["Praliner","2 st",4,8],["Lösgodis","100 g",19,8],["Glass","1 kula",4,8],["Chips","25 g",4,8],["Proteinbar","1 st",6,8],
   // Dryck
   ["Kaffe / te utan mjölk","1 kopp",0,9],["Kaffe med mjölk","1 kopp",1,9],["Lightläsk","33 cl",0,9],["Läsk","33 cl",5,9],["Juice","2 dl",5,9],["Saft, spädd","2 dl",3,9],
   ["Vin","1 glas",4,9],["Öl","33 cl",5,9],["Sprit","4 cl",3,9],
   // Rätter
-  ["Ärtsoppa","3 dl",6,10],["Sushi","10 bitar",14,10],["Pizza","1 st",28,10],["Hamburgare","1 st",15,10],["Pyttipanna","1 portion",12,10]
+  ["Ärtsoppa","3 dl",6,10],["Sushi","10 bitar",14,10],["Pizza","1 st",35,10],["Hamburgare","1 st",15,10],["Pyttipanna","1 portion",12,10]
 ];
 let foodCat = -1;
 

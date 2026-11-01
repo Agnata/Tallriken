@@ -83,7 +83,7 @@
   {
    "app": "Köttfärs 10 %",
    "portion": "125 g",
-   "appPoints": 6,
+   "appPoints": 8,
    "grams": 125,
    "livsmedelsverket": "Nötfärs fett 10% stekt",
    "per100g": {
@@ -343,7 +343,7 @@
   {
    "app": "Semla",
    "portion": "1 st",
-   "appPoints": 18,
+   "appPoints": 14,
    "grams": 120,
    "livsmedelsverket": "Semla vetebulle fylld m mandelmassa vispad grädde",
    "per100g": {
@@ -351,6 +351,162 @@
     "prot": 5.38,
     "sug": 0.0,
     "fat": 8.56
+   }
+  },
+  {
+   "app": "Köttbullar",
+   "portion": "10 st",
+   "appPoints": 7,
+   "grams": 150,
+   "livsmedelsverket": "Köttbullar stekta hemlagade",
+   "per100g": {
+    "kcal": 176.8,
+    "prot": 15.8,
+    "sug": 0.0,
+    "fat": 3.87
+   }
+  },
+  {
+   "app": "Pannkakor",
+   "portion": "2 st",
+   "appPoints": 8,
+   "grams": 130,
+   "livsmedelsverket": "Pannkaka tunn hemlagad",
+   "per100g": {
+    "kcal": 199.3,
+    "prot": 7.1,
+    "sug": 0.0,
+    "fat": 3.11
+   }
+  },
+  {
+   "app": "Bearnaisesås",
+   "portion": "2 msk",
+   "appPoints": 5,
+   "grams": 30,
+   "livsmedelsverket": "Bearnaisesås",
+   "per100g": {
+    "kcal": 496.3,
+    "prot": 2.55,
+    "sug": 0.0,
+    "fat": 6.11
+   }
+  },
+  {
+   "app": "Mörk choklad",
+   "portion": "25 g",
+   "appPoints": 6,
+   "grams": 25,
+   "livsmedelsverket": "Mörk choklad kakao >70 %",
+   "per100g": {
+    "kcal": 572.4,
+    "prot": 9.69,
+    "sug": 0.0,
+    "fat": 22.47
+   }
+  },
+  {
+   "app": "Pizza",
+   "portion": "1 st",
+   "appPoints": 35,
+   "grams": 400,
+   "livsmedelsverket": "Pizza Capricciosa rökt skinka restaurang",
+   "per100g": {
+    "kcal": 267.3,
+    "prot": 11.0,
+    "sug": 0.0,
+    "fat": 6.34
+   }
+  },
+  {
+   "app": "Chokladboll",
+   "portion": "1 st",
+   "appPoints": 8,
+   "grams": 40,
+   "livsmedelsverket": "Chokladboll",
+   "per100g": {
+    "kcal": 503.9,
+    "prot": 4.4,
+    "sug": 0.0,
+    "fat": 14.92
+   }
+  },
+  {
+   "app": "Potatismos",
+   "portion": "2 dl",
+   "appPoints": 5,
+   "grams": 200,
+   "livsmedelsverket": "Potatismos",
+   "per100g": {
+    "kcal": 88.8,
+    "prot": 2.3,
+    "sug": 0.0,
+    "fat": 0.46
+   }
+  },
+  {
+   "app": "Prinskorv",
+   "portion": "5 st",
+   "appPoints": 7,
+   "grams": 75,
+   "livsmedelsverket": "Prinskorv fett 24%",
+   "per100g": {
+    "kcal": 268.3,
+    "prot": 10.0,
+    "sug": 0.0,
+    "fat": 8.81
+   }
+  },
+  {
+   "app": "Fiskpinnar",
+   "portion": "4 st",
+   "appPoints": 5,
+   "grams": 100,
+   "livsmedelsverket": "Fiskpinnar ugnsstekt",
+   "per100g": {
+    "kcal": 207.3,
+    "prot": 12.31,
+    "sug": 0.0,
+    "fat": 0.84
+   }
+  },
+  {
+   "app": "Mozzarella",
+   "portion": "50 g",
+   "appPoints": 5,
+   "grams": 50,
+   "livsmedelsverket": "Mozzarella ost fett 20 %",
+   "per100g": {
+    "kcal": 255.1,
+    "prot": 18.6,
+    "sug": 0.0,
+    "fat": 13.75
+   }
+  },
+  {
+   "app": "Inlagd sill",
+   "portion": "50 g",
+   "appPoints": 4,
+   "grams": 50,
+   "livsmedelsverket": "Inlagd sill",
+   "per100g": {
+    "kcal": 244.7,
+    "prot": 9.75,
+    "sug": 0.0,
+    "fat": 2.37
+   }
+  },
+  {
+   "app": "Jordnötter",
+   "portion": "20 g",
+   "appPoints": 4,
+   "grams": 20,
+   "livsmedelsverket": "Jordnötter rostade saltade",
+   "per100g": {
+    "kcal": 609.6,
+    "prot": 26.67,
+    "sug": 4.8,
+    "fat": 7.37
    }
   }
  ]
