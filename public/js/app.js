@@ -1,4 +1,4 @@
-import { calcPoints, actPoints, iso, today, addDays, mondayOf, isoWeek, energyBudget, foodTags, sunTimes, parseUnit, blank, normalize, looksLikeDiary, trendLine, niceTicks, timeTicks, byWeek, startWeight } from "./logic.js";
+import { calcPoints, actPoints, iso, today, addDays, mondayOf, isoWeek, energyBudget, foodTags, weekBuffer, sunTimes, parseUnit, blank, normalize, looksLikeDiary, trendLine, niceTicks, timeTicks, byWeek, startWeight } from "./logic.js";
 
 (async function(){
 "use strict";
@@ -120,12 +120,14 @@ const eatenOn = d => day(d).foods.reduce((a,f)=>a+f.points,0);
 const actOn = d => day(d).acts.reduce((a,x)=>a+x.points,0);
 const allowedOn = d => S.settings.daily + actOn(d);
 const overOn = d => Math.max(0, eatenOn(d) - allowedOn(d));
-function weekLeft(d){
-  const m=mondayOf(d); let used=0;
-  for(let i=0;i<7;i++){ const x=addDays(m,i); if(x>d) break; used+=overOn(x); }
-  return S.settings.weekly - used;
-}
 const logged = d => day(d).foods.length>0;
+// Veckobufferten: grundbufferten plus poäng som blev över på tidigare dagar i veckan, minus det man gått över.
+function weekInfo(d){
+  const m=mondayOf(d);
+  const week=[...Array(7)].map((_,i)=>addDays(m,i)).map(x=>({date:x, eaten:eatenOn(x), allowed:allowedOn(x), logged:logged(x)}));
+  return weekBuffer(S.settings.weekly, week, d, today());
+}
+const weekLeft = d => weekInfo(d).left;
 function streak(){
   let n=0, d=today();
   if(!logged(d)) d=addDays(d,-1);
@@ -191,7 +193,7 @@ function dayName(d){
 function renderToday(){
   $("#dayLabel").textContent = dayName(cur);
   $("#nextDay").disabled = cur>=today();
-  const eaten=eatenOn(cur), act=actOn(cur), allowed=allowedOn(cur), left=allowed-eaten, wk=weekLeft(cur);
+  const eaten=eatenOn(cur), act=actOn(cur), allowed=allowedOn(cur), left=allowed-eaten, wi=weekInfo(cur), wk=wi.left;
   const C=2*Math.PI*78;
   const foodFrac=Math.min(1, eaten/allowed);
   const extraFrac=Math.min(1-foodFrac, Math.max(0, eaten-allowed)/Math.max(1,S.settings.weekly));
@@ -206,6 +208,7 @@ function renderToday(){
   if(left>=0){ big.textContent=left; big.classList.remove("over"); $("#leftLabel").textContent = cur===today()?"poäng kvar idag":"poäng kvar"; }
   else { big.textContent=-left; big.classList.add("over"); $("#leftLabel").textContent="från veckobufferten"; }
   $("#sEaten").textContent=eaten; $("#sAct").textContent="+"+act; $("#sWeek").textContent=wk;
+  $("#sSaved").textContent= wi.saved? " (+"+wi.saved+" sparat)" : "";
   $("#cheer").textContent = cheer(eaten,allowed,left,wk);
   renderGoals();
 
@@ -646,6 +649,8 @@ function weekStats(mon){
     days:ds.length, logged:ld.length,
     within:ld.filter(d=>eatenOn(d)<=allowedOn(d)).length,
     used:ds.reduce((a,d)=>a+overOn(d),0),
+    // Hela veckans sparade poäng (alla avslutade dagar), inte bara fram till sista dagen.
+    saved:weekBuffer(S.settings.weekly, [...Array(7)].map((_,i)=>addDays(mon,i)).map(x=>({date:x, eaten:eatenOn(x), allowed:allowedOn(x), logged:logged(x)})), addDays(mon,7), today()).saved,
     min:ds.reduce((a,d)=>a+day(d).acts.reduce((x,y)=>x+y.min,0),0),
     strength:ds.reduce((a,d)=>a+day(d).acts.filter(isStrength).length,0),
     gym:ds.reduce((a,d)=>a+day(d).acts.filter(isGym).length,0),
@@ -663,7 +668,8 @@ function winsOf(s){
   const w=[];
   if(s.logged>=5) w.push("Du loggade "+s.logged+" av "+s.days+" dagar."); else if(s.logged>0) w.push("Du loggade "+s.logged+" dag"+(s.logged>1?"ar":"")+".");
   if(s.within>0) w.push(s.within+" dag"+(s.within>1?"ar":"")+" inom dina poäng.");
-  if(s.logged>0 && s.used<=S.settings.weekly) w.push("Du höll dig inom veckobufferten.");
+  if(s.logged>0 && s.used<=S.settings.weekly+s.saved) w.push("Du höll dig inom veckobufferten.");
+  if(s.saved>0) w.push(s.saved+" dagspoäng blev över och sparades i veckobufferten.");
   if(s.min>=150) w.push(s.min+" aktiva minuter, över rekommenderade 150!"); else if(s.min>0) w.push(s.min+" aktiva minuter.");
   if(s.gym>=gymGoal()) w.push(s.gym+" gympass"+(s.gym>gymGoal()?", mer än målet!":", målet nått!")); else if(s.gym>0) w.push(s.gym+" gympass.");
   if(s.strength>s.gym) w.push((s.strength-s.gym)+" hemmapass.");
@@ -684,7 +690,7 @@ function suggestionsOf(s){
   if(s.fish<2) o.push("Fisk till middag två gånger");
   if(s.fv<4) o.push("Fem portioner frukt och grönt om dagen");
   if(s.min<150) o.push("150 minuters rörelse, ungefär 20 minuter om dagen");
-  if(s.used>S.settings.weekly) o.push("Planera veckans utemiddag och spara poäng innan");
+  if(s.used>S.settings.weekly+s.saved) o.push("Planera veckans utemiddag och spara poäng innan");
   if(s.sleep!=null && s.sleep<3) o.push("Ladda för sömnen: samma läggtid varje kväll");
   if(!o.length) o.push("Fortsätt precis som förra veckan","Prova ett nytt grönsaksrecept","Lägg till en extra promenad");
   return o.slice(0,4);

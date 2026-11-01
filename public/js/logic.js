@@ -153,3 +153,19 @@ export function foodTags(name, categories=[]){
   const fv=isZeroPointName(n) || (cat(/^en:(fresh|frozen)-(fruits|vegetables|berries)$/) && !cat(/dried|juice|sweetened|jam|chips|sauce/));
   return {fv,dairy,protein,fish};
 }
+
+// ---------- Veckobuffert ----------
+// Veckobufferten en viss dag (upTo): veckans grundbuffert, plus de dagspoäng som blev över på
+// tidigare avslutade dagar samma vecka, minus det man gått över fram till och med dagen.
+// Bara dagar med loggad mat sparar poäng, så en dag man glömt logga inte ger en hel dags poäng.
+// Dagen som pågår (today) sparar inget förrän den är slut. week: veckans dagar i ordning,
+// [{date, eaten, allowed, logged}].
+export function weekBuffer(weekly, week, upTo, todayDate){
+  let saved=0, used=0;
+  for(const x of week){
+    if(x.date>upTo) break;
+    used+=Math.max(0, x.eaten-x.allowed);
+    if(x.date<upTo && x.date<todayDate && x.logged) saved+=Math.max(0, x.allowed-x.eaten);
+  }
+  return { left: weekly+saved-used, saved, used };
+}

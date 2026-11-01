@@ -116,3 +116,20 @@ test("'Bra för dig' recognises foods from Livsmedelsverket, Open Food Facts and
   assert.equal(L.foodTags("Isolate", ["en:protein-powders"]).protein, true, "by Open Food Facts category");
   assert.equal(L.foodTags("Skyr vanilj", ["en:dairies", "en:yogurts"]).dairy, true);
 });
+
+test("unused daily points go to the week's buffer, once the day is over", () => {
+  // Monday–Thursday; today is Thursday. Daily 23, buffer 30.
+  const wk = [
+    { date: "2026-10-26", eaten: 20, allowed: 23, logged: true },  // 3 left over -> saved
+    { date: "2026-10-27", eaten: 28, allowed: 23, logged: true },  // 5 over -> used
+    { date: "2026-10-28", eaten: 0, allowed: 23, logged: false },  // not logged -> nothing saved
+    { date: "2026-10-29", eaten: 10, allowed: 25, logged: true },  // today: not saved yet
+  ];
+  assert.deepEqual(L.weekBuffer(30, wk, "2026-10-29", "2026-10-29"), { left: 28, saved: 3, used: 5 });
+  assert.deepEqual(L.weekBuffer(30, wk, "2026-10-26", "2026-10-29"), { left: 30, saved: 0, used: 0 }, "Monday itself: its own leftover is not in its buffer");
+  assert.deepEqual(L.weekBuffer(30, wk, "2026-10-27", "2026-10-29"), { left: 28, saved: 3, used: 5 }, "Tuesday: Monday's 3 saved, Tuesday's 5 used");
+  // The next day, Thursday's 15 left over are saved too.
+  assert.equal(L.weekBuffer(30, [...wk, { date: "2026-10-30", eaten: 0, allowed: 23, logged: false }], "2026-10-30", "2026-10-30").saved, 18);
+  // Going over on a day takes from the buffer, never more than it is: the buffer can go negative.
+  assert.equal(L.weekBuffer(5, [{ date: "2026-10-26", eaten: 33, allowed: 23, logged: true }], "2026-10-26", "2026-10-27").left, -5);
+});
