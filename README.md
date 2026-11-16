@@ -4,6 +4,7 @@ Poäng, rörelse och vikt på **https://tallriken.parnes.com**: artefakten Tallr
 
 - **Appen** är artefakten: Idag (poäng, måltider, smakbitar, rörelse, vatten, mående), Vikt (kurva och kroppsmått), Hälsa (träningsmål, hemmapass, dagsljus), Framsteg (veckosummering, delmål, märken) och Inställningar
 - **Lagring på servern** i stället för i artefakten: varje användares dagbok är ett JSON-dokument i SQLite, med versionsnummer så att två enheter inte skriver över varandra
+- **Festmåltid:** snabbval för lätt fest (~30 p), avsmakningsmeny (~80 p) eller egen uppskattning, med foto och anteckning. Poängen tas i första hand från veckans extrapoäng, och festen syns som undantag i diagram och veckosummering
 - **Withings-våg:** varje användare kan koppla sin våg, och vikten kommer in automatiskt när hen väger sig
 - **Livsmedel:** sök bland Livsmedelsverkets cirka 2 500 livsmedel och märkesvaror från Open Food Facts direkt i matrutan
 - **Kopia:** ladda ned dagboken som JSON och läs in en kopia, till exempel det du loggat i artefakten

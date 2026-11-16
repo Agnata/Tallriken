@@ -79,7 +79,7 @@ export function offsiteStatus(dir) {
   try { return JSON.parse(fs.readFileSync(path.join(dir, "offsite.json"), "utf8")); } catch { return null; }
 }
 
-// Restores everyone's Tallriken data from a backup. Accounts, sessions and two-step settings are
+// Restores everyone's Tallriken data, with their photos, from a backup. Accounts, sessions and two-step settings are
 // left alone so nobody is locked out; data for users that no longer exist is skipped. A rescue
 // backup of the current state is taken first. Versions are bumped so open apps notice the change.
 export function restoreBackup(db, dir, name, keep = 30) {
@@ -104,6 +104,11 @@ export function restoreBackup(db, dir, name, keep = 30) {
     try {
       db.exec("DELETE FROM main.user_data");
       for (const r of rows) insert.run(r.user_id, r.data, (old.get(r.user_id) || 0) + 1, r.updated_at);
+      // Photos (e.g. feasts) follow the diaries; a backup from before photos existed has none.
+      if (db.prepare("SELECT 1 FROM src.sqlite_master WHERE type = 'table' AND name = 'photos'").get()) {
+        db.exec("DELETE FROM main.photos");
+        db.exec("INSERT INTO main.photos (id, user_id, type, data, created_at) SELECT id, user_id, type, data, created_at FROM src.photos WHERE user_id IN (SELECT id FROM main.users)");
+      }
       db.exec("COMMIT");
     } catch (err) {
       db.exec("ROLLBACK");

@@ -75,6 +75,15 @@ const MIGRATIONS = [
      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
      expires_at TEXT NOT NULL
    );`,
+  // 2: photos the user adds (e.g. to a feast), kept in the database so backups include them
+  `CREATE TABLE photos (
+     id         TEXT PRIMARY KEY,
+     user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     type       TEXT NOT NULL,
+     data       BLOB NOT NULL,
+     created_at TEXT NOT NULL DEFAULT (datetime('now'))
+   );
+   CREATE INDEX photos_user ON photos(user_id);`,
 ];
 
 // Runs fn inside a transaction; rolls back if it throws.
