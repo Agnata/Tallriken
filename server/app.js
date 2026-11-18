@@ -10,6 +10,7 @@ import { createMailer } from "./mailer.js";
 import { accountRouter } from "./routes/account.js";
 import { adminRouter } from "./routes/admin.js";
 import { dataRouter } from "./routes/data.js";
+import { photosRouter } from "./routes/photos.js";
 import { health } from "./health.js";
 import { startScheduler } from "./scheduler.js";
 import { createTwoFactor } from "./twofactor.js";
@@ -47,6 +48,7 @@ export function createApp(config = defaultConfig, db = openDb(config.dbPath), ma
   }));
   // The user's data document is the only large request body; everything else stays small.
   app.use("/api/data", express.json({ limit: "5mb" }));
+  app.use("/api/photos", express.json({ limit: "5mb" }));
   app.use(express.json({ limit: "50kb" }));
   // Signed-in pages and the API are never cached by browsers or proxies.
   app.use(["/api", "/app", "/konto", "/admin", "/login", "/losenord", "/withings"], (_req, res, next) => {
@@ -112,6 +114,7 @@ export function createApp(config = defaultConfig, db = openDb(config.dbPath), ma
   app.get("/app", requireUser, (_req, res) => res.sendFile(page("app.html")));
   app.get("/konto", requireUser, (_req, res) => res.sendFile(page("konto.html")));
   app.use("/api/data", requireUser, dataRouter(db));
+  app.use("/api/photos", requireUser, photosRouter(db));
   app.use("/api/withings", requireUser, withingsRouter(withings));
   app.get("/api/foods/search", requireUser, (req, res) => res.json({ items: foods.search(String(req.query.q || "")), version: foods.status().version }));
   app.get("/api/foods/brands", requireUser, async (req, res) => {

@@ -1,4 +1,4 @@
-import { calcPoints, actPoints, iso, today, addDays, mondayOf, isoWeek, energyBudget, foodTags, weekBuffer, sunTimes, parseUnit, blank, normalize, looksLikeDiary, trendLine, niceTicks, timeTicks, byWeek, startWeight } from "./logic.js";
+import { calcPoints, actPoints, iso, today, addDays, mondayOf, isoWeek, energyBudget, foodTags, weekBuffer, evenOut, sunTimes, parseUnit, blank, normalize, looksLikeDiary, trendLine, niceTicks, timeTicks, byWeek, startWeight } from "./logic.js";
 
 (async function(){
 "use strict";
@@ -116,17 +116,18 @@ document.addEventListener("visibilitychange", async ()=>{
 // ---------- Beräkningar ----------
 const day = d => S.days[d] || {foods:[],acts:[]};
 const ensureDay = d => (S.days[d] = S.days[d] || {foods:[],acts:[]});
-const eatenOn = d => day(d).foods.reduce((a,f)=>a+f.points,0);
+// Vanlig mat räknas mot dagens poäng. Festmåltider (f.feast) tas i första hand från veckans
+// extrapoäng; det bufferten inte räcker till läggs på dagen (weekInfo(d).days[d].toDay).
+const eatenOn = d => day(d).foods.filter(f=>!f.feast).reduce((a,f)=>a+f.points,0);
+const feastOn = d => day(d).foods.filter(f=>f.feast).reduce((a,f)=>a+f.points,0);
 const actOn = d => day(d).acts.reduce((a,x)=>a+x.points,0);
 const allowedOn = d => S.settings.daily + actOn(d);
-const overOn = d => Math.max(0, eatenOn(d) - allowedOn(d));
 const logged = d => day(d).foods.length>0;
 // Veckobufferten: grundbufferten plus poäng som blev över på tidigare dagar i veckan, minus det man gått över.
-function weekInfo(d){
-  const m=mondayOf(d);
-  const week=[...Array(7)].map((_,i)=>addDays(m,i)).map(x=>({date:x, eaten:eatenOn(x), allowed:allowedOn(x), logged:logged(x)}));
-  return weekBuffer(S.settings.weekly, week, d, today());
-}
+const weekDays = m => [...Array(7)].map((_,i)=>addDays(m,i)).map(x=>({date:x, eaten:eatenOn(x), allowed:allowedOn(x), logged:logged(x), feast:feastOn(x)}));
+function weekInfo(d){ return weekBuffer(S.settings.weekly, weekDays(mondayOf(d)), d, today()); }
+// Allt som räknas mot dagens poäng: vanlig mat plus den del av en festmåltid som bufferten inte täckte.
+const dayEaten = d => weekInfo(d).days[d].eaten;
 const weekLeft = d => weekInfo(d).left;
 function streak(){
   let n=0, d=today();
@@ -193,7 +194,7 @@ function dayName(d){
 function renderToday(){
   $("#dayLabel").textContent = dayName(cur);
   $("#nextDay").disabled = cur>=today();
-  const eaten=eatenOn(cur), act=actOn(cur), allowed=allowedOn(cur), left=allowed-eaten, wi=weekInfo(cur), wk=wi.left;
+  const wi=weekInfo(cur), fd=wi.days[cur], eaten=fd.eaten, act=actOn(cur), allowed=allowedOn(cur), left=allowed-eaten, wk=wi.left;
   const C=2*Math.PI*78;
   const foodFrac=Math.min(1, eaten/allowed);
   const extraFrac=Math.min(1-foodFrac, Math.max(0, eaten-allowed)/Math.max(1,S.settings.weekly));
@@ -209,6 +210,9 @@ function renderToday(){
   else { big.textContent=-left; big.classList.add("over"); $("#leftLabel").textContent="från veckobufferten"; }
   $("#sEaten").textContent=eaten; $("#sAct").textContent="+"+act; $("#sWeek").textContent=wk;
   $("#sSaved").textContent= wi.saved? " (+"+wi.saved+" sparat)" : "";
+  const fe=$("#sFeast"); fe.classList.toggle("hidden", !feastOn(cur));
+  fe.textContent= feastOn(cur)? "🎉 Fest "+feastOn(cur)+" p: "+fd.fromBuffer+" från veckans extrapoäng"+(fd.toDay? ", "+fd.toDay+" från dagens" : "") : "";
+  renderFeastHint(wi);
   $("#cheer").textContent = cheer(eaten,allowed,left,wk);
   renderGoals();
 
@@ -221,7 +225,13 @@ function renderToday(){
     const p=document.createElement("span"); p.className="pts"; p.textContent=items.length? items.reduce((a,f)=>a+f.points,0)+" p":"";
     head.append(h,p); sec.append(head);
     const ul=document.createElement("ul"); ul.className="items";
-    items.forEach(f=>ul.append(itemRow(f.name,amountText(f),f.points,()=>removeFood(f.id),"",()=>openQty({name:f.name,portion:f.portion,base:(f.base!=null?f.base:f.points),qty:f.qty||1},f.id,"day"))));
+    items.forEach(f=>{
+      if(f.feast){
+        const li=itemRow("🎉 "+f.name, "Festmåltid"+(f.feast.photo? " · foto" : ""), f.points, ()=>removeFood(f.id), "", ()=>openFeast(meal,f));
+        li.classList.add("feast"); ul.append(li); return;
+      }
+      ul.append(itemRow(f.name,amountText(f),f.points,()=>removeFood(f.id),"",()=>openQty({name:f.name,portion:f.portion,base:(f.base!=null?f.base:f.points),qty:f.qty||1},f.id,"day")));
+    });
     sec.append(ul);
     const b=document.createElement("button"); b.className="add"; b.textContent="Lägg till i "+meal.toLowerCase();
     b.onclick=()=>openFood(meal); sec.append(b);
@@ -401,7 +411,11 @@ function addFood(name,portion,base,qty){
   toast(points===0? name+" är 0 poäng. Härligt!" : name+" tillagt, "+points+" p");
   if(wasEmpty) checkBadges();
 }
-function removeFood(id){ const d=ensureDay(cur); d.foods=d.foods.filter(f=>f.id!==id); save(); renderAll(); }
+function removeFood(id){
+  const d=ensureDay(cur), f=d.foods.find(x=>x.id===id);
+  if(f && f.feast && f.feast.photo) deletePhoto(f.feast.photo);
+  d.foods=d.foods.filter(x=>x.id!==id); save(); renderAll();
+}
 function customCalc(){
   const v=id=>parseFloat($(id).value.replace(",","."))||0;
   return calcPoints(v("#cKcal"),v("#cProt"),v("#cSug"),v("#cFat"));
@@ -498,6 +512,10 @@ function renderWeightChart(all, big=false){
   }
   const pl=paths(pts), pt=paths(tr);
   const rawOp= showTrend? 0.35 : 1;
+  // Festmåltider markeras längs botten, så att en topp efter en fest syns som ett undantag.
+  const feastDays=Object.keys(S.days).filter(d=>d>=pts[0].date && d<=raw[raw.length-1].date && feastOn(d)>0);
+  [...new Set(feastDays.map(d=> long? byWeek([{date:d,kg:0}])[0].date : d))].forEach(d=>{
+    s+='<text x="'+X(d).toFixed(1)+'" y="'+(H-PB-5)+'" text-anchor="middle" font-size="'+(FS+1)+'" class="fm">🎉<title>Festmåltid</title></text>'; });
   s+='<path d="'+pl.line+'" fill="none" stroke="var(--pine)" stroke-opacity="'+rawOp+'" stroke-width="'+(showTrend?1.5:2)+'" stroke-linejoin="round" stroke-linecap="round" class="ln"/>';
   if(pts.length<=40) pts.forEach(p=>s+='<circle cx="'+X(p.date).toFixed(1)+'" cy="'+Y(p.kg).toFixed(1)+'" r="3.5" fill="var(--surface)" stroke="var(--pine)" stroke-opacity="'+(showTrend?0.6:1)+'" stroke-width="1.5"/>');
   if(showTrend){
@@ -570,7 +588,7 @@ function logBite(bt){
   save(); renderAll(); toast(bt.name+" loggad som mellanmål, "+bt.points+" p"); if(wasEmpty) checkBadges();
 }
 function copyYesterday(){
-  const src=day(addDays(cur,-1)).foods;
+  const src=day(addDays(cur,-1)).foods.filter(f=>!f.feast);
   if(!src.length){ toast("Dagen innan är tom"); return; }
   if(day(cur).foods.length && !confirm("Det finns redan mat loggad. Lägga till gårdagens ovanpå?")) return;
   const d=ensureDay(cur); const wasEmpty=!logged(cur);
@@ -579,7 +597,7 @@ function copyYesterday(){
 }
 function askName(title,def,cb){ $("#nTitle").textContent=title; $("#nVal").value=def||""; nameCb=cb; $("#nameDlg").showModal(); setTimeout(()=>$("#nVal").select(),50); }
 function saveMealTemplate(meal){
-  const items=day(cur).foods.filter(f=>f.meal===meal).map(f=>({name:f.name,portion:f.portion,base:f.base!=null?f.base:f.points,qty:f.qty||1,points:f.points}));
+  const items=day(cur).foods.filter(f=>f.meal===meal && !f.feast).map(f=>({name:f.name,portion:f.portion,base:f.base!=null?f.base:f.points,qty:f.qty||1,points:f.points}));
   const def=meal==="Mellanmål"?"Mitt mellanmål":"Min "+meal.toLowerCase();
   askName("Spara som vanlig måltid",def,name=>{
     S.meals=(S.meals||[]).filter(m=>m.name!==name); S.meals.unshift({id:uid(),name,items});
@@ -647,10 +665,9 @@ function weekStats(mon){
   const avg=k=>{ const v=moods.map(m=>m[k]).filter(x=>x); return v.length? v.reduce((a,b)=>a+b,0)/v.length : null; };
   return {
     days:ds.length, logged:ld.length,
-    within:ld.filter(d=>eatenOn(d)<=allowedOn(d)).length,
-    used:ds.reduce((a,d)=>a+overOn(d),0),
-    // Hela veckans sparade poäng (alla avslutade dagar), inte bara fram till sista dagen.
-    saved:weekBuffer(S.settings.weekly, [...Array(7)].map((_,i)=>addDays(mon,i)).map(x=>({date:x, eaten:eatenOn(x), allowed:allowedOn(x), logged:logged(x)})), addDays(mon,7), today()).saved,
+    // Hela veckan: sparade poäng från alla avslutade dagar, använt ur bufferten, och festmåltider.
+    ...(wb=>({ within:ld.filter(d=>wb.days[d].eaten<=allowedOn(d)).length, used:wb.used, saved:wb.saved }))(weekBuffer(S.settings.weekly, weekDays(mon), addDays(mon,7), today())),
+    feasts:ds.flatMap(d=>day(d).foods.filter(f=>f.feast).map(f=>Object.assign({date:d},f))),
     min:ds.reduce((a,d)=>a+day(d).acts.reduce((x,y)=>x+y.min,0),0),
     strength:ds.reduce((a,d)=>a+day(d).acts.filter(isStrength).length,0),
     gym:ds.reduce((a,d)=>a+day(d).acts.filter(isGym).length,0),
@@ -679,6 +696,7 @@ function winsOf(s){
   if(s.wChange!=null && s.wChange<0) w.push(fmtN(-s.wChange)+" kg ner.");
   if(s.looser>0) w.push("Kläderna kändes lösare "+s.looser+" gång"+(s.looser>1?"er":"")+".");
   if(s.wins>0) w.push(s.wins+" egna segrar noterade.");
+  if(s.feasts.length) w.push(s.feasts.length===1? "En festmåltid, inräknad i veckan." : s.feasts.length+" festmåltider, inräknade i veckan.");
   return w;
 }
 function suggestionsOf(s){
@@ -706,6 +724,8 @@ function renderSummary(){
     h+='<div class="stats"><div><b>'+s.logged+'/'+s.days+'</b><span>loggade dagar</span></div><div><b>'+s.within+'</b><span>inom poängen</span></div><div><b>'+s.min+'</b><span>aktiva min</span></div></div>';
     const w=winsOf(s);
     h+='<h3 style="margin-top:14px">Det här gick bra</h3><ul class="wins">'+(w.length? w.map(x=>'<li>'+esc(x)+'</li>').join("") : '<li>Du är kvar och fortsätter. Det är det viktigaste.</li>')+'</ul>';
+    if(s.feasts.length) h+='<h3 style="margin-top:14px">🎉 Festmåltider</h3><ul class="feastlist">'+s.feasts.map(f=>'<li>'+(f.feast.photo? '<img src="/api/photos/'+esc(f.feast.photo)+'" alt="">' : '<span class="fi" aria-hidden="true">🎉</span>')+
+      '<span><b>'+esc(f.name)+'</b><small>'+esc(shortDate(f.date))+' · '+f.points+' p</small></span></li>').join("")+'</ul>';
   }
   // Veckans fokus gäller alltid innevarande vecka
   const f=(S.focus||{})[thisMon];
@@ -1038,14 +1058,18 @@ function renderProgress(){
   // Veckodiagram
   const m=mondayOf(today()); const W=520,H=170,bw=44;
   const days=[...Array(7)].map((_,i)=>addDays(m,i));
-  const max=Math.max(S.settings.daily+10,...days.map(d=>Math.max(eatenOn(d),allowedOn(d))));
-  let svg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Poäng per dag denna vecka">';
+  const eat=Object.fromEntries(days.map(d=>[d, eatenOn(d)+feastOn(d)]));
+  const max=Math.max(S.settings.daily+10,...days.map(d=>Math.max(eat[d],allowedOn(d))));
+  let svg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Poäng per dag denna vecka">'+
+    '<defs><pattern id="feastFill" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="var(--cloud-soft)"/><rect width="4" height="8" fill="var(--cloud)"/></pattern></defs>';
   const lab=["mån","tis","ons","tors","fre","lör","sön"];
   days.forEach((d,i)=>{
     const x=24+i*((W-48)/7)+((W-48)/7-bw)/2, base=H-24;
-    const a=allowedOn(d)/max*(H-40), e=eatenOn(d)/max*(H-40);
+    // En festdag ritas med en randig stapel och 🎉, så att den syns som ett undantag.
+    const a=allowedOn(d)/max*(H-50), e=Math.min(eat[d],max)/max*(H-50), feast=feastOn(d)>0;
     svg+='<rect x="'+x+'" y="'+(base-a)+'" width="'+bw+'" height="'+a+'" rx="8" fill="var(--track)"/>';
-    if(e>0) svg+='<rect x="'+x+'" y="'+(base-e)+'" width="'+bw+'" height="'+e+'" rx="8" fill="'+(eatenOn(d)>allowedOn(d)?"var(--cloud)":"var(--pine)")+'"/>';
+    if(e>0) svg+='<rect x="'+x+'" y="'+(base-e)+'" width="'+bw+'" height="'+e+'" rx="8" fill="'+(feast? "url(#feastFill)" : eatenOn(d)>allowedOn(d)?"var(--cloud)":"var(--pine)")+'"/>';
+    if(feast) svg+='<text x="'+(x+bw/2)+'" y="'+(base-e-6)+'" text-anchor="middle" font-size="15">🎉<title>Festmåltid, '+feastOn(d)+' p</title></text>';
     svg+='<text x="'+(x+bw/2)+'" y="'+(H-6)+'" text-anchor="middle" font-size="13" fill="'+(d===today()?"var(--ink)":"var(--muted)")+'" font-weight="'+(d===today()?"600":"400")+'">'+lab[i]+'</text>';
   });
   svg+='</svg>';
@@ -1062,7 +1086,7 @@ function checkBadges(){
 // ---------- Inställningar ----------
 function renderSettings(){
   const s=S.settings;
-  $("#setName").value=s.name||""; $("#setHeight").value=s.height||""; $("#setGoal").value=s.goal||""; $("#setStart").value=s.startDate||"";
+  $("#setName").value=s.name||""; $("#setHeight").value=s.height||""; $("#setGoal").value=s.goal||""; $("#setStart").value=s.startDate||""; $("#setFeastHints").checked=s.feastHints!==false;
   $("#setSex").value=s.sex||"kvinna"; $("#setAge").value=s.age||""; $("#setPal").value=s.pal||"1.4";
   const lw=sortedW(); $("#setKg").value=lw.length? lw[lw.length-1].kg : ""; $("#calcOut").textContent="";
   $("#setDaily").value=s.daily; $("#setWeekly").value=s.weekly; $("#setGym").value=s.gymGoal||2; $("#setCardio").value=s.cardioGoal||150; goalWarn(); renderLibrary();
@@ -1193,6 +1217,7 @@ $("#setSave").onclick=()=>{
   s.height=parseFloat($("#setHeight").value)||null;
   s.goal=parseFloat(String($("#setGoal").value).replace(",","."))||null;
   s.startDate=$("#setStart").value||null;
+  s.feastHints=$("#setFeastHints").checked;
   s.daily=Math.min(45,Math.max(18,parseInt($("#setDaily").value)||23));
   s.weekly=Math.min(50,Math.max(0,parseInt($("#setWeekly").value)||0));
   s.gymGoal=Math.min(7,Math.max(1,parseInt($("#setGym").value)||2));
@@ -1200,6 +1225,96 @@ $("#setSave").onclick=()=>{
   save(); renderSettings(); renderAll(); toast("Inställningar sparade");
 };
 $("#resetAll").onclick=()=>{ if(confirm("Rensa all data? Det går inte att ångra.")){ S=blank(); save(); renderAll(); renderSettings(); toast("Allt rensat"); } };
+
+// ---------- Festmåltid ----------
+// Ett snabbval för middagen ute eller avsmakningsmenyn: ett ungefärligt poängvärde som tas från
+// veckans extrapoäng i första hand, med foto och anteckning om man vill.
+const FEASTS=[["latt","Lätt fest",30],["meny","Avsmakningsmeny",80],["egen","Egen uppskattning",null]];
+let feastS=null;
+function openFeast(meal, entry){
+  const fe=entry && entry.feast;
+  feastS={meal:entry? entry.meal : meal, id:entry? entry.id : null, kind:fe? fe.kind : "latt", photo:fe? fe.photo||null : null, newPhoto:null, oldPhoto:fe? fe.photo||null : null};
+  $("#fNote").value= fe? fe.note||"" : "";
+  $("#fPts").value= entry && fe.kind==="egen"? entry.points : "";
+  $("#fSave").textContent= entry? "Spara ändring" : "Lägg till festmåltid";
+  $("#fDel").classList.toggle("hidden", !entry);
+  if($("#foodDlg").open) $("#foodDlg").close();
+  renderFeast(); $("#feastDlg").showModal();
+}
+function feastPoints(){ const k=FEASTS.find(x=>x[0]===feastS.kind); return k[2]!=null? k[2] : Math.max(0,parseInt($("#fPts").value)||0); }
+function renderFeast(){
+  const el=$("#fKinds"); el.innerHTML="";
+  FEASTS.forEach(([k,l,p])=>{ const b=document.createElement("button"); b.type="button"; b.setAttribute("aria-pressed",k===feastS.kind);
+    b.innerHTML='<b></b><span></span>'; b.querySelector("b").textContent=l; b.querySelector("span").textContent= p!=null? "ca "+p+" p" : "ange poäng";
+    b.onclick=()=>{ feastS.kind=k; renderFeast(); if(k==="egen") $("#fPts").focus(); }; el.append(b); });
+  $("#fOwn").classList.toggle("hidden", feastS.kind!=="egen");
+  const img=$("#fImg"), ph=feastS.newPhoto? feastS.newPhoto : feastS.photo? "/api/photos/"+feastS.photo : null;
+  img.classList.toggle("hidden", !ph); if(ph) img.src=ph;
+  $("#fPhotoBtn").textContent= ph? "📷 Byt foto" : "📷 Lägg till foto";
+  $("#fPhotoDel").classList.toggle("hidden", !ph);
+  // Hur festen skulle räknas: veckan som den blir med festen inlagd (eller ändrad).
+  const pts=feastPoints(), mine=feastS.id? (day(cur).foods.find(f=>f.id===feastS.id)||{}).points||0 : 0;
+  const week=weekDays(mondayOf(cur)), other=week.find(x=>x.date===cur).feast-mine;
+  const wb=weekBuffer(S.settings.weekly, week.map(x=>x.date===cur? Object.assign({},x,{feast:other+pts}) : x), cur, today());
+  const fromBuf=Math.max(0, wb.days[cur].fromBuffer-Math.min(other, wb.days[cur].fromBuffer)), toDay=pts-fromBuf;
+  $("#fCalc").textContent= !pts? "" : toDay? fromBuf+" p från veckans extrapoäng och "+toDay+" p från dagens poäng."
+    : "Alla "+pts+" p tas från veckans extrapoäng. Kvar där efteråt: "+Math.max(0,wb.left)+" p.";
+}
+// Bilder krymps i telefonen innan de skickas: längsta sidan 1600 px, JPEG.
+function shrinkImage(file){
+  return new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(file), im=new Image();
+    im.onload=()=>{ const k=Math.min(1,1600/Math.max(im.width,im.height)), c=document.createElement("canvas");
+      c.width=Math.round(im.width*k); c.height=Math.round(im.height*k); c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+      URL.revokeObjectURL(url); resolve(c.toDataURL("image/jpeg",0.82)); };
+    im.onerror=()=>{ URL.revokeObjectURL(url); reject(new Error("Bilden gick inte att läsa")); };
+    im.src=url;
+  });
+}
+function deletePhoto(id){ fetch("/api/photos/"+encodeURIComponent(id),{method:"DELETE"}).catch(()=>{}); }
+$("#fPhotoBtn").onclick=()=>$("#fFile").click();
+$("#fFile").onchange=async()=>{
+  const f=$("#fFile").files[0]; $("#fFile").value=""; if(!f) return;
+  try{ feastS.newPhoto=await shrinkImage(f); renderFeast(); }catch(e){ toast(e.message); }
+};
+$("#fPhotoDel").onclick=()=>{ feastS.newPhoto=null; feastS.photo=null; renderFeast(); };
+$("#fPts").oninput=()=>renderFeast();
+$("#fSave").onclick=async()=>{
+  const pts=feastPoints(); if(!pts){ toast("Ange ungefär hur många poäng"); $("#fPts").focus(); return; }
+  const btn=$("#fSave"); btn.disabled=true;
+  try{
+    let photo=feastS.photo;
+    if(feastS.newPhoto){ photo=(await api("/api/photos",{method:"POST",body:{data:feastS.newPhoto}})).id; }
+    if(feastS.oldPhoto && feastS.oldPhoto!==photo) deletePhoto(feastS.oldPhoto);
+    const kind=FEASTS.find(x=>x[0]===feastS.kind), note=$("#fNote").value.trim();
+    const entry={name: note||kind[1], portion:kind[1], base:pts, qty:1, points:pts, meal:feastS.meal, feast:{kind:kind[0], note, photo:photo||null}};
+    const d=ensureDay(cur); const wasEmpty=!logged(cur);
+    if(feastS.id){ const e=d.foods.find(f=>f.id===feastS.id); if(e) Object.assign(e,entry); }
+    else d.foods.push(Object.assign({id:uid()},entry));
+    save(); $("#feastDlg").close(); renderAll();
+    const fd=weekInfo(cur).days[cur];
+    toast("🎉 "+pts+" p: "+(fd.toDay? fd.fromBuffer+" från veckans extrapoäng, "+fd.toDay+" från dagens" : "från veckans extrapoäng")+". Ha det så trevligt!");
+    if(wasEmpty) checkBadges();
+  }catch(e){ toast(e.message); }
+  finally{ btn.disabled=false; }
+};
+$("#fDel").onclick=()=>{ if(feastS.id && confirm("Ta bort festmåltiden?")){ removeFood(feastS.id); $("#feastDlg").close(); } };
+$("#toFeast").onclick=()=>openFeast(mealTarget,null);
+// Efter en fest som tog mer än veckans extrapoäng: ett vänligt, valfritt förslag om några lätta dagar.
+// Visas under festens vecka, bara om det går att jämna ut lugnt, och kan stängas eller slås av.
+function renderFeastHint(wi){
+  const el=$("#feastHint"); el.innerHTML="";
+  if(cur!==today() || S.settings.feastHints===false) return;
+  const mon=mondayOf(today());
+  if(!weekDays(mon).some(x=>x.feast) || (S.feastHintClosed||{})[mon]) return;
+  const sug=evenOut(-wi.left, S.settings.daily);
+  if(!sug) return;
+  const box=document.createElement("div"); box.className="feasthint";
+  box.innerHTML='<p></p><button type="button" class="linkbtn">Stäng</button>';
+  box.querySelector("p").textContent="🎉 Festen tog lite mer än veckans extrapoäng. Vill du jämna ut det räcker ungefär "+sug.perDay+" p mindre per dag de kommande "+sug.days+" dagarna. Helt valfritt, en fest är en fest.";
+  box.querySelector("button").onclick=()=>{ S.feastHintClosed=Object.assign({},S.feastHintClosed,{[mon]:true}); save(); renderFeastHint(wi); };
+  el.append(box);
+}
 
 // ---------- Konto och kopior ----------
 $("#logout").onclick=async()=>{

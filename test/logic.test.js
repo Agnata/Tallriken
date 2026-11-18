@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 const L = await import("../public/js/logic.js");
+const noDays = ({ days, ...rest }) => rest;
 
 test("points: energy, sugar and fat up, protein down, never negative", () => {
   assert.equal(L.calcPoints(0, 0, 0, 0), 0);
@@ -125,11 +126,34 @@ test("unused daily points go to the week's buffer, once the day is over", () => 
     { date: "2026-10-28", eaten: 0, allowed: 23, logged: false },  // not logged -> nothing saved
     { date: "2026-10-29", eaten: 10, allowed: 25, logged: true },  // today: not saved yet
   ];
-  assert.deepEqual(L.weekBuffer(30, wk, "2026-10-29", "2026-10-29"), { left: 28, saved: 3, used: 5 });
-  assert.deepEqual(L.weekBuffer(30, wk, "2026-10-26", "2026-10-29"), { left: 30, saved: 0, used: 0 }, "Monday itself: its own leftover is not in its buffer");
-  assert.deepEqual(L.weekBuffer(30, wk, "2026-10-27", "2026-10-29"), { left: 28, saved: 3, used: 5 }, "Tuesday: Monday's 3 saved, Tuesday's 5 used");
+  assert.deepEqual(noDays(L.weekBuffer(30, wk, "2026-10-29", "2026-10-29")), { left: 28, saved: 3, used: 5 });
+  assert.deepEqual(noDays(L.weekBuffer(30, wk, "2026-10-26", "2026-10-29")), { left: 30, saved: 0, used: 0 }, "Monday itself: its own leftover is not in its buffer");
+  assert.deepEqual(noDays(L.weekBuffer(30, wk, "2026-10-27", "2026-10-29")), { left: 28, saved: 3, used: 5 }, "Tuesday: Monday's 3 saved, Tuesday's 5 used");
   // The next day, Thursday's 15 left over are saved too.
   assert.equal(L.weekBuffer(30, [...wk, { date: "2026-10-30", eaten: 0, allowed: 23, logged: false }], "2026-10-30", "2026-10-30").saved, 18);
   // Going over on a day takes from the buffer, never more than it is: the buffer can go negative.
   assert.equal(L.weekBuffer(5, [{ date: "2026-10-26", eaten: 33, allowed: 23, logged: true }], "2026-10-26", "2026-10-27").left, -5);
+});
+
+test("a feast is taken from the week's buffer first, and only what it cannot cover from the day", () => {
+  const d = (date, eaten, feast = 0) => ({ date, eaten, allowed: 23, logged: true, feast });
+  // Buffer 30, Monday 3 saved -> 33 available on Tuesday; an 80 p tasting menu takes 33, 47 hit the day.
+  let w = L.weekBuffer(30, [d("2026-11-09", 20), d("2026-11-10", 15, 80)], "2026-11-10", "2026-11-11");
+  assert.deepEqual(w.days["2026-11-10"], { fromBuffer: 33, toDay: 47, eaten: 62 });
+  assert.equal(w.left, 30 + 3 - 33 - (62 - 23));
+  // A light party (30 p) with room in the buffer: nothing on the day, and the day's unused points are still saved.
+  w = L.weekBuffer(30, [d("2026-11-09", 20, 30), d("2026-11-10", 23)], "2026-11-10", "2026-11-11");
+  assert.deepEqual(w.days["2026-11-09"], { fromBuffer: 30, toDay: 0, eaten: 20 });
+  assert.deepEqual(noDays(w), { left: 3, saved: 3, used: 30 });
+  // Buffer already spent: the whole feast lands on the day.
+  w = L.weekBuffer(5, [d("2026-11-09", 28), d("2026-11-10", 10, 30)], "2026-11-10", "2026-11-11");
+  assert.deepEqual(w.days["2026-11-10"], { fromBuffer: 0, toDay: 30, eaten: 40 });
+});
+
+test("evening out after a feast is spread gently over a few days", () => {
+  assert.deepEqual(L.evenOut(36, 23), { perDay: 6, days: 7 }, "36 p over: about 6 p less a day for a week");
+  assert.deepEqual(L.evenOut(8, 23), { perDay: 4, days: 2 }, "a little over: two days are enough");
+  assert.deepEqual(L.evenOut(1, 23), { perDay: 1, days: 2 });
+  assert.equal(L.evenOut(0, 23), null, "the buffer covered it");
+  assert.equal(L.evenOut(120, 23), null, "18 p a day would be too much to suggest");
 });

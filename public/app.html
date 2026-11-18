@@ -42,7 +42,9 @@
     <span>Rörelse <b id="sAct">+0</b></span>
     <span>Veckobuffert <b id="sWeek">0</b><span id="sSaved"></span></span>
   </div>
+  <p class="feastline hidden" id="sFeast"></p>
   <p class="cheer" id="cheer"></p>
+  <div id="feastHint"></div>
   <div id="focusLine"></div>
 
   <section class="block">
@@ -253,12 +255,13 @@
       <label class="f"><span>Konditionsmin per vecka</span><input type="number" id="setCardio" min="30" max="600" step="10"></label>
     </div>
     <div id="setWarn"></div>
+    <label class="check"><input type="checkbox" id="setFeastHints"> Föreslå hur en festmåltid kan jämnas ut under veckan</label>
     <p class="note">Ett lugnt tempo, runt ett halvt kilo i veckan, brukar hålla i längden. Dagspoängen kan inte sättas under 18.</p>
     <button class="btn" id="setSave">Spara inställningar</button>
   </section>
   <section class="block">
     <h3>Så funkar poängen</h3>
-    <p class="note">Poängen bygger på energi, socker och mättat fett, minus protein. Frukt, bär och grönsaker är 0 poäng. Rörelse ger extrapoäng samma dag. Veckobufferten tar emot det du går över en dag, så en middag ute förstör inte veckan. Dagspoäng du inte använder en dag du loggat sparas i veckobufferten samma vecka, när dagen är slut. Bufferten börjar om varje måndag.</p>
+    <p class="note">Poängen bygger på energi, socker och mättat fett, minus protein. Frukt, bär och grönsaker är 0 poäng. Rörelse ger extrapoäng samma dag. Veckobufferten tar emot det du går över en dag, så en middag ute förstör inte veckan. Dagspoäng du inte använder en dag du loggat sparas i veckobufferten samma vecka, när dagen är slut. Bufferten börjar om varje måndag. En festmåltid tas i första hand från veckans extrapoäng och bara det som inte ryms där från dagens poäng.</p>
     <p class="note">Dagspoängen räknas fram från ditt energibehov (ålder, kön, längd, vikt och vardagsrörelse) minus ett lugnt underskott på cirka 500 kcal. För kvinnor går det aldrig under 1 200 kcal. Efter klimakteriet sjunker energibehovet medan behovet av protein och kalcium snarare ökar, därför följer ”Bra för dig” protein till varje måltid, mejeriprodukter, frukt och grönt samt fisk.</p>
   </section>
   <section class="block">
@@ -345,6 +348,7 @@
 <dialog id="foodDlg">
   <div class="dlg">
     <div class="dlg-head"><h2 id="foodTitle">Lägg till mat</h2><button data-close aria-label="Stäng">×</button></div>
+    <button type="button" class="feastbtn" id="toFeast">🎉 Festmåltid<small>Middag ute eller avsmakningsmeny, från veckans extrapoäng</small></button>
     <input type="text" id="foodSearch" placeholder="Sök, t.ex. surdegsbröd, corn flakes, lax">
     <div class="chips" id="chips"></div>
     <div class="foodlist" id="foodList"></div>
@@ -415,6 +419,27 @@
     <div class="dlg-head"><h2 id="nTitle"></h2><button data-close aria-label="Stäng">×</button></div>
     <label class="f"><span>Namn</span><input type="text" id="nVal" maxlength="40"></label>
     <button class="btn" id="nSave">Spara</button>
+  </div>
+</dialog>
+
+<!-- Festmåltid -->
+<dialog id="feastDlg" aria-labelledby="feastTitle">
+  <div class="dlg">
+    <div class="dlg-head"><h2 id="feastTitle">🎉 Festmåltid</h2><button data-close aria-label="Stäng">×</button></div>
+    <div style="overflow:auto;flex:1">
+      <p class="note" style="margin-top:0">Poängen tas i första hand från veckans extrapoäng, inte från dagens. En uppskattning räcker.</p>
+      <div class="feastkinds" id="fKinds"></div>
+      <label class="f hidden" id="fOwn"><span>Ungefär hur många poäng?</span><input type="text" id="fPts" inputmode="numeric" maxlength="3"></label>
+      <label class="f"><span>Anteckning</span><input type="text" id="fNote" maxlength="80" placeholder="t.ex. restaurangens namn"></label>
+      <div class="fphoto">
+        <img id="fImg" class="hidden" alt="Foto från festmåltiden">
+        <div class="toolrow" style="margin:8px 0 0"><button type="button" class="btn ghost" id="fPhotoBtn">📷 Lägg till foto</button><button type="button" class="btn ghost hidden" id="fPhotoDel">Ta bort foto</button></div>
+        <input type="file" id="fFile" accept="image/*" class="hidden">
+      </div>
+      <p class="calc" id="fCalc"></p>
+    </div>
+    <button class="btn" id="fSave">Lägg till festmåltid</button>
+    <button class="btn ghost hidden" id="fDel" style="margin-top:8px">Ta bort festmåltiden</button>
   </div>
 </dialog>
 

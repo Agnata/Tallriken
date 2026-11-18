@@ -158,14 +158,32 @@ export function foodTags(name, categories=[]){
 // Veckobufferten en viss dag (upTo): veckans grundbuffert, plus de dagspoäng som blev över på
 // tidigare avslutade dagar samma vecka, minus det man gått över fram till och med dagen.
 // Bara dagar med loggad mat sparar poäng, så en dag man glömt logga inte ger en hel dags poäng.
-// Dagen som pågår (today) sparar inget förrän den är slut. week: veckans dagar i ordning,
-// [{date, eaten, allowed, logged}].
+// Dagen som pågår (today) sparar inget förrän den är slut.
+// Festmåltider (feast) dras i första hand från bufferten, som den ser ut när festen äts; bara det
+// som bufferten inte räcker till hamnar på dagens poäng (toDay).
+// week: veckans dagar i ordning, [{date, eaten, allowed, logged, feast}], där eaten är dagens
+// vanliga mat utan festmåltider. days[date] = {fromBuffer, toDay, eaten} (eaten med toDay).
 export function weekBuffer(weekly, week, upTo, todayDate){
-  let saved=0, used=0;
+  let saved=0, used=0; const days={};
   for(const x of week){
     if(x.date>upTo) break;
-    used+=Math.max(0, x.eaten-x.allowed);
-    if(x.date<upTo && x.date<todayDate && x.logged) saved+=Math.max(0, x.allowed-x.eaten);
+    const feast=x.feast||0;
+    const fromBuffer=Math.min(feast, Math.max(0, weekly+saved-used)), toDay=feast-fromBuffer;
+    const eaten=x.eaten+toDay;
+    used+=fromBuffer+Math.max(0, eaten-x.allowed);
+    if(x.date<upTo && x.date<todayDate && x.logged) saved+=Math.max(0, x.allowed-eaten);
+    days[x.date]={fromBuffer, toDay, eaten};
   }
-  return { left: weekly+saved-used, saved, used };
+  return { left: weekly+saved-used, saved, used, days };
+}
+
+// Förslag efter en festmåltid som tog mer än veckans extrapoäng: hur det kan jämnas ut på några
+// lätta dagar, om man vill. Lugnt: högst en fjärdedel av dagspoängen mindre per dag, utspritt på
+// 2–7 dagar. Blir det ändå mer än halva dagspoängen per dag ges inget förslag.
+export function evenOut(overBy, daily){
+  if(!(overBy>0) || !(daily>0)) return null;
+  const gentle=Math.max(2, Math.floor(daily/4));
+  const days=Math.min(7, Math.max(2, Math.ceil(overBy/gentle)));
+  const perDay=Math.ceil(overBy/days);
+  return perDay<=Math.floor(daily/2) ? { perDay, days } : null;
 }
