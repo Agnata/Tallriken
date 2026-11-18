@@ -42,6 +42,8 @@ const FOODS = [
   // Dryck
   ["Kaffe / te utan mjölk","1 kopp",0,9],["Kaffe med mjölk","1 kopp",1,9],["Lightläsk","33 cl",0,9],["Läsk","33 cl",5,9],["Juice","2 dl",5,9],["Saft, spädd","2 dl",3,9],
   ["Vin","1 glas",4,9],["Öl","33 cl",5,9],["Sprit","4 cl",3,9],
+  // Champagne brut 12 %, ca 68 kcal/100 ml (calcPoints: 12,5 cl ≈ 3 p, 37,5 cl ≈ 8 p)
+  ["Champagne brut","12,5 cl",3,9],["Champagne brut, liten flaska","37,5 cl",8,9],
   // Rätter
   ["Ärtsoppa","3 dl",6,10],["Sushi","10 bitar",14,10],["Pizza","1 st",35,10],["Hamburgare","1 st",15,10],["Pyttipanna","1 portion",12,10]
 ];
