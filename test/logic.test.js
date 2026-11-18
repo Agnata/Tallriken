@@ -157,3 +157,13 @@ test("evening out after a feast is spread gently over a few days", () => {
   assert.equal(L.evenOut(0, 23), null, "the buffer covered it");
   assert.equal(L.evenOut(120, 23), null, "18 p a day would be too much to suggest");
 });
+
+test("a plan of light days lowers the daily points on those days only", () => {
+  const plan = { from: "2026-11-12", days: 7, perDay: 6 };
+  assert.equal(L.planReduction(plan, "2026-11-11"), 0);
+  assert.equal(L.planReduction(plan, "2026-11-12"), 6);
+  assert.equal(L.planReduction(plan, "2026-11-18"), 6, "the seventh day");
+  assert.equal(L.planReduction(plan, "2026-11-19"), 0);
+  assert.equal(L.planReduction(null, "2026-11-12"), 0);
+  assert.equal(L.planReduction({ from: "2026-11-12", days: 0, perDay: 6 }, "2026-11-12"), 0);
+});

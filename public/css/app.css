@@ -239,3 +239,6 @@ ul.items li.feast .name{font-weight:600}
 .feastlist small{color:var(--muted)}
 label.check{display:flex;gap:8px;align-items:center;margin:10px 0;font-size:.92rem}
 label.check input{width:20px;height:20px;accent-color:var(--pine)}
+.hintbtns{display:flex;gap:8px;margin-top:8px}
+.hintbtns .btn{padding:9px 12px;font-size:.92rem}
+.hintbtns .linkbtn{padding:2px 0 0}

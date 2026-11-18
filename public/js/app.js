@@ -1,4 +1,4 @@
-import { calcPoints, actPoints, iso, today, addDays, mondayOf, isoWeek, energyBudget, foodTags, weekBuffer, evenOut, sunTimes, parseUnit, blank, normalize, looksLikeDiary, trendLine, niceTicks, timeTicks, byWeek, startWeight } from "./logic.js";
+import { calcPoints, actPoints, iso, today, addDays, mondayOf, isoWeek, energyBudget, foodTags, weekBuffer, evenOut, planReduction, sunTimes, parseUnit, blank, normalize, looksLikeDiary, trendLine, niceTicks, timeTicks, byWeek, startWeight } from "./logic.js";
 
 (async function(){
 "use strict";
@@ -196,7 +196,10 @@ function dayName(d){
 function renderToday(){
   $("#dayLabel").textContent = dayName(cur);
   $("#nextDay").disabled = cur>=today();
-  const wi=weekInfo(cur), fd=wi.days[cur], eaten=fd.eaten, act=actOn(cur), allowed=allowedOn(cur), left=allowed-eaten, wk=wi.left;
+  // En lätt dag (plan efter en festmåltid) sänker dagens mål. Veckoräkningen är som vanligt, så det
+  // man äter under det vanliga målet sparas i veckobufferten och jämnar ut festen.
+  const light=planReduction(S.lightPlan, cur);
+  const wi=weekInfo(cur), fd=wi.days[cur], eaten=fd.eaten, act=actOn(cur), allowed=allowedOn(cur)-light, left=allowed-eaten, wk=wi.left;
   const C=2*Math.PI*78;
   const foodFrac=Math.min(1, eaten/allowed);
   const extraFrac=Math.min(1-foodFrac, Math.max(0, eaten-allowed)/Math.max(1,S.settings.weekly));
@@ -208,8 +211,8 @@ function renderToday(){
     ex.setAttribute("stroke-dasharray", (f*C)+" "+C);
   } else ex.setAttribute("stroke-dasharray","0 "+C);
   const big=$("#leftBig");
-  if(left>=0){ big.textContent=left; big.classList.remove("over"); $("#leftLabel").textContent = cur===today()?"poäng kvar idag":"poäng kvar"; }
-  else { big.textContent=-left; big.classList.add("over"); $("#leftLabel").textContent="från veckobufferten"; }
+  if(left>=0){ big.textContent=left; big.classList.remove("over"); $("#leftLabel").textContent = (cur===today()?"poäng kvar idag":"poäng kvar")+(light? ", lätt dag" : ""); }
+  else { big.textContent=-left; big.classList.add("over"); $("#leftLabel").textContent= light && eaten<=allowed+light? "över dagens lätta mål" : "från veckobufferten"; }
   $("#sEaten").textContent=eaten; $("#sAct").textContent="+"+act; $("#sWeek").textContent=wk;
   $("#sSaved").textContent= wi.saved? " (+"+wi.saved+" sparat)" : "";
   const fe=$("#sFeast"); fe.classList.toggle("hidden", !feastOn(cur));
@@ -1306,16 +1309,36 @@ $("#toFeast").onclick=()=>openFeast(mealTarget,null);
 // Visas under festens vecka, bara om det går att jämna ut lugnt, och kan stängas eller slås av.
 function renderFeastHint(wi){
   const el=$("#feastHint"); el.innerHTML="";
-  if(cur!==today() || S.settings.feastHints===false) return;
-  const mon=mondayOf(today());
-  if(!weekDays(mon).some(x=>x.feast) || (S.feastHintClosed||{})[mon]) return;
+  if(cur!==today()) return;
+  const t=today(), plan=S.lightPlan, mon=mondayOf(t);
+  const box=(text,buttons)=>{ const b=document.createElement("div"); b.className="feasthint";
+    const p=document.createElement("p"); p.textContent=text; b.append(p);
+    const row=document.createElement("div"); row.className="hintbtns";
+    buttons.forEach(([label,cls,fn])=>{ const x=document.createElement("button"); x.type="button"; x.className=cls; x.textContent=label; x.onclick=fn; row.append(x); });
+    b.append(row); el.append(b); };
+  // En pågående plan visas så länge den varar, och kan avbrytas.
+  if(plan && planReduction(plan,t)){
+    const n=Math.round((new Date(t+"T12:00:00")-new Date(plan.from+"T12:00:00"))/864e5)+1;
+    box("🌿 Lätt dag "+n+" av "+plan.days+": "+plan.perDay+" p färre i dag. Det du sparar går till veckans extrapoäng och jämnar ut festen i lugn takt.",
+      [["Avsluta planen","linkbtn",()=>{ delete S.lightPlan; S.feastHintClosed=Object.assign({},S.feastHintClosed,{[mon]:true}); save(); renderAll(); toast("Planen är avslutad. Dagspoängen är som vanligt igen."); }]]);
+    return;
+  }
+  if(plan && plan.from>t){
+    box("🌿 Lätta dagar börjar i morgon: "+plan.perDay+" p färre per dag i "+plan.days+" dagar.",
+      [["Ångra","linkbtn",()=>{ delete S.lightPlan; save(); renderAll(); }]]);
+    return;
+  }
+  if(S.settings.feastHints===false) return;
+  const feastDays=weekDays(mon).filter(x=>x.feast && x.date<=t).map(x=>x.date);
+  if(!feastDays.length || (S.feastHintClosed||{})[mon]) return;
   const sug=evenOut(-wi.left, S.settings.daily);
   if(!sug) return;
-  const box=document.createElement("div"); box.className="feasthint";
-  box.innerHTML='<p></p><button type="button" class="linkbtn">Stäng</button>';
-  box.querySelector("p").textContent="🎉 Festen tog lite mer än veckans extrapoäng. Vill du jämna ut det räcker ungefär "+sug.perDay+" p mindre per dag de kommande "+sug.days+" dagarna. Helt valfritt, en fest är en fest.";
-  box.querySelector("button").onclick=()=>{ S.feastHintClosed=Object.assign({},S.feastHintClosed,{[mon]:true}); save(); renderFeastHint(wi); };
-  el.append(box);
+  // Planen börjar i morgon om festen var i dag, annars i dag.
+  const from= feastDays.includes(t)? addDays(t,1) : t;
+  box("🎉 Festen tog lite mer än veckans extrapoäng. Vill du jämna ut det räcker ungefär "+sug.perDay+" p mindre per dag de kommande "+sug.days+" dagarna. Helt valfritt, en fest är en fest.",
+    [["Ja, lägg upp lätta dagar","btn",()=>{ S.lightPlan={from, days:sug.days, perDay:sug.perDay}; save(); renderAll();
+        toast(from===t? "Lätta dagar från i dag: "+sug.perDay+" p färre per dag i "+sug.days+" dagar." : "Lätta dagar från i morgon: "+sug.perDay+" p färre per dag i "+sug.days+" dagar."); }],
+     ["Nej tack","btn ghost",()=>{ S.feastHintClosed=Object.assign({},S.feastHintClosed,{[mon]:true}); save(); renderFeastHint(wi); }]]);
 }
 
 // ---------- Konto och kopior ----------

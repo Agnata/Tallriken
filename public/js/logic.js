@@ -187,3 +187,10 @@ export function evenOut(overBy, daily){
   const perDay=Math.ceil(overBy/days);
   return perDay<=Math.floor(daily/2) ? { perDay, days } : null;
 }
+
+// En plan med lätta dagar efter en festmåltid: { from, days, perDay }. Dagarna from … from+days-1
+// får perDay färre dagspoäng. Ger hur många poäng planen drar av en viss dag (0 utanför planen).
+export function planReduction(plan, date){
+  if(!plan || !plan.from || !(plan.days>0) || !(plan.perDay>0)) return 0;
+  return date>=plan.from && date<=addDays(plan.from, plan.days-1) ? plan.perDay : 0;
+}
